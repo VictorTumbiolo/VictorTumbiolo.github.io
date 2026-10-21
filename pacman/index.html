@@ -1,0 +1,396 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="First-Person Pac-Man: walk a 3D maze as Pac-Man in Unity while four ghosts with distinct AI hunt you."
+    />
+    <title>First-Person Pac-Man</title>
+    <script type="module" crossorigin src="/assets/projects-D6KBgP7A.js"></script>
+    <script type="module" crossorigin src="/assets/project-page-YFq_ndGV.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/projects-BDO5pT66.css">
+  </head>
+  <body>
+    <a class="skip" href="#about">Skip to content</a>
+
+    <header class="site-header">
+      <a class="brand" href="/" data-profile-name>Home</a>
+      <nav aria-label="Primary">
+        <a href="/#work">All projects</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="project-hero" aria-labelledby="page-title">
+        <a class="back" href="/#work">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M12 8H4M7.5 4.5L4 8l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+          All projects
+        </a>
+        <p class="eyebrow">Project &middot; Unity &middot; C#</p>
+        <h1 id="page-title">First-Person Pac-Man</h1>
+        <p class="lede">
+          Pac-Man from the inside. Walk a 3D maze as Pac-Man, eat every coin, and stay ahead of four
+          ghosts that each hunt you in their own way.
+        </p>
+        <div class="actions">
+          <a class="button" href="https://first-person-pacman.netlify.app" target="_blank" rel="noopener noreferrer">
+            <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M4 2.5v11l9-5.5z" fill="currentColor" /></svg>
+            Play Here
+          </a>
+        </div>
+        <dl class="facts">
+          <div><dt>Engine</dt><dd>Unity</dd></div>
+          <div><dt>Language</dt><dd>C#</dd></div>
+          <div><dt>Controls</dt><dd>WASD + mouse</dd></div>
+          <div><dt>Ghosts</dt><dd>4, each with its own AI</dd></div>
+          <div><dt>Lives</dt><dd>3</dd></div>
+        </dl>
+      </section>
+
+      <section class="demo" id="demo" aria-label="Demo video">
+        <figure class="video-frame">
+          <video controls playsinline preload="metadata" aria-label="First-Person Pac-Man gameplay demo">
+            <source src="/pacman/demo.mp4" type="video/mp4" />
+            Your browser can't play this video. <a href="/pacman/demo.mp4">Download the demo</a>.
+          </video>
+          <figcaption>Gameplay demo</figcaption>
+        </figure>
+      </section>
+
+      <nav class="toc" aria-label="On this page">
+        <a href="#about">About</a>
+        <a href="#screens">In the maze</a>
+        <a href="#controls">Controls</a>
+        <a href="#ghosts">Ghosts</a>
+        <a href="#flow">Game flow</a>
+        <a href="#setup">Scene setup</a>
+        <a href="#scripts">Scripts</a>
+      </nav>
+
+      <section id="about" class="block" aria-labelledby="about-title">
+        <h2 id="about-title">What it is</h2>
+        <div class="prose">
+          <p>
+            A first-person take on Pac-Man built in Unity. You play as Pac-Man, walking through a 3D
+            maze with <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> and mouse look, collecting
+            coins while four ghosts chase you.
+          </p>
+          <p>
+            The maze and its <strong>waypoint graph</strong> are authored in the Unity editor. A set of
+            C# scripts supplies everything else: player movement, ghost AI, collectibles and the game
+            flow (lives, win and lose, resets). Each ghost precomputes shortest paths over the graph
+            with Dijkstra's algorithm, then picks targets according to its own personality.
+          </p>
+        </div>
+      </section>
+
+      <section id="screens" class="block" aria-labelledby="screens-title">
+        <h2 id="screens-title">In the maze</h2>
+        <div class="shots">
+          <figure class="shot shot-map">
+            <img
+              src="/pacman/aerial.png"
+              width="587"
+              height="662"
+              loading="lazy"
+              decoding="async"
+              alt="Aerial view of the maze: cyan outlines for the walls, red lines tracing the waypoint graph, and the ghosts gathered in the central ghost house."
+            />
+            <figcaption>
+              The maze from above with the ceiling and walls removed showcasing the interior design. The red lines trace the waypoint graph the ghosts navigate, and the
+              ghosts start in the central house. 
+            </figcaption>
+          </figure>
+          <div class="shot-stack">
+            <figure class="shot">
+              <img
+                src="/pacman/view-narrow.png"
+                width="1960"
+                height="1033"
+                loading="lazy"
+                decoding="async"
+                alt="First-person view down a maze corridor with a red and a purple ghost close ahead, coins on the floor and glowing cyan walls."
+              />
+              <figcaption>First-person narrow point of view of the map with no walls or ceiling</figcaption>
+            </figure>
+            <figure class="shot">
+              <img
+                src="/pacman/view-wide.png"
+                width="2207"
+                height="1173"
+                loading="lazy"
+                decoding="async"
+                alt="Wide first-person view of the maze with four ghosts in the distance and rows of coins between the cyan walls."
+              />
+              <figcaption>First-person wide point of view of the map with no walls or ceiling</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="controls" class="block" aria-labelledby="controls-title">
+        <h2 id="controls-title">How you move</h2>
+        <div class="controls">
+          <div class="control-card">
+            <div class="keys" aria-hidden="true">
+              <kbd class="k-w">W</kbd>
+              <kbd class="k-a">A</kbd>
+              <kbd class="k-s">S</kbd>
+              <kbd class="k-d">D</kbd>
+            </div>
+            <h3>Walk</h3>
+            <p>
+              <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> move you forward, left, back and
+              right.
+            </p>
+          </div>
+          <div class="control-card">
+            <div class="mouse" aria-hidden="true"><span></span></div>
+            <h3>Look</h3>
+            <p>
+              The mouse turns the camera. Looking up and down is clamped to &plusmn;90&deg;, so you can't
+              flip over.
+            </p>
+          </div>
+        </div>
+        <ul class="bullets">
+          <li>
+            Movement is relative to where you're looking. The camera's forward and right directions are
+            flattened onto the ground, so looking at the sky doesn't slow you down.
+          </li>
+          <li>
+            The player is a Rigidbody moved with <code>MovePosition</code> every physics step, with mouse
+            look handled each frame.
+          </li>
+          <li>Movement and look both freeze while a menu is on screen.</li>
+        </ul>
+      </section>
+
+      <section id="ghosts" class="block" aria-labelledby="ghosts-title">
+        <h2 id="ghosts-title">The ghosts</h2>
+        <p class="section-lede">
+          All four use the same pathfinding. What differs is the spot each one decides to run to. In
+          first person, "ahead of Pac-Man" means wherever you're looking.
+        </p>
+
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--ghost-blinky)">
+            <h3>Blinky <span>Red &middot; the direct chaser</span></h3>
+            <p>
+              Routes to the waypoint nearest you. If no waypoint is closer to you than he is, he skips
+              the graph and heads straight at you.
+            </p>
+          </li>
+          <li class="ghost" style="--c: var(--ghost-pinky)">
+            <h3>Pinky <span>Pink &middot; the ambusher</span></h3>
+            <p>
+              Aims about 4 tiles (12 units) ahead of where you're looking and routes to the nearest
+              waypoint to that spot.
+            </p>
+          </li>
+          <li class="ghost" style="--c: var(--ghost-inky)">
+            <h3>Inky <span>Cyan &middot; the flanker</span></h3>
+            <p>
+              Takes the point 2 tiles (6 units) ahead of you, draws a line from Blinky to it, then doubles
+              it. Where Inky goes depends on where Blinky is, just like the arcade original.
+            </p>
+          </li>
+          <li class="ghost" style="--c: var(--ghost-clyde)">
+            <h3>Clyde <span>Orange &middot; chases, then loses nerve</span></h3>
+            <p>
+              Chases like Blinky until he gets within 32 units of you, then retreats to his home corner.
+            </p>
+          </li>
+        </ul>
+
+        <h3 class="sub">Release schedule</h3>
+        <ol class="release">
+          <li><strong>Blinky</strong><span>Leaves the ghost house immediately</span></li>
+          <li><strong>Pinky</strong><span>After 3 seconds</span></li>
+          <li><strong>Inky</strong><span>Once you've collected 30 coins</span></li>
+          <li><strong>Clyde</strong><span>Once you've collected 60 coins</span></li>
+        </ol>
+
+        <h3 class="sub">Power pellets</h3>
+        <div class="prose">
+          <p>
+            Eating a power pellet turns all four ghosts blue for 6 seconds. They slow from speed 5 to 3,
+            turn around, and wander randomly (never straight back the way they came). Touching an
+            afraid ghost eats it: it goes back to the ghost house for 3 seconds, then re-enters the maze.
+            Touching a ghost that <em>isn't</em> afraid costs you a life.
+          </p>
+        </div>
+
+        <h3 class="sub">How they find you</h3>
+        <ol class="steps">
+          <li>
+            <strong>A hand-built graph.</strong> Every waypoint in the maze lists its neighbors, set by
+            hand in the Unity Inspector.
+          </li>
+          <li>
+            <strong>Precomputed routes.</strong> When the game starts, each ghost runs Dijkstra's
+            algorithm from every waypoint to every other and keeps only the first step of each shortest
+            path in a lookup table.
+          </li>
+          <li>
+            <strong>Cheap decisions.</strong> At each waypoint the ghost picks a destination, looks up
+            the next hop, and walks there. All the heavy work was done up front, so per-frame cost is
+            tiny.
+          </li>
+          <li>
+            <strong>Tunnels count.</strong> The two tunnel ends are linked with zero-cost edges, so ghost
+            routes can use the tunnel.
+          </li>
+        </ol>
+      </section>
+
+      <section id="flow" class="block" aria-labelledby="flow-title">
+        <h2 id="flow-title">Game flow</h2>
+        <ol class="steps">
+          <li>
+            <strong>Home screen.</strong> The game starts frozen with the cursor free. Press play to hide
+            the menu and unfreeze Pac-Man.
+          </li>
+          <li>
+            <strong>Staggered ghosts.</strong> Blinky leaves at once and Pinky follows after 3 seconds.
+            Inky and Clyde are held back until 30 and 60 coins.
+          </li>
+          <li>
+            <strong>Getting caught.</strong> You lose one of your 3 lives and the round resets: positions,
+            waypoints and ghosts all go back to the start, behind a Resume button. Out of lives, the
+            game-over screen shows.
+          </li>
+          <li>
+            <strong>Winning.</strong> Collect every coin and the win screen shows while everything
+            freezes.
+          </li>
+          <li>
+            <strong>Play again.</strong> A new game restores all the coins and pellets, resets your lives
+            to 3, and starts over. Coins and pellets are hidden rather than destroyed, so nothing needs to
+            be rebuilt.
+          </li>
+        </ol>
+        <p class="note">
+          A single game manager object handles all of this and persists across scenes.
+        </p>
+      </section>
+
+      <section id="setup" class="block" aria-labelledby="setup-title">
+        <h2 id="setup-title">Scene setup</h2>
+        <p class="section-lede">
+          The scripts find most objects by tag or name, so the Unity scene has to match. Here is what they
+          rely on.
+        </p>
+
+        <div class="setup-grid">
+          <div class="setup-card">
+            <h3>Tags</h3>
+            <ul class="chips">
+              <li><code>PacMan</code></li>
+              <li><code>PacMan_Sphere</code></li>
+              <li><code>Blinky</code></li>
+              <li><code>Pinky</code></li>
+              <li><code>Inky</code></li>
+              <li><code>Clyde</code></li>
+              <li><code>WayPoint</code></li>
+              <li><code>Coins</code></li>
+              <li><code>PowerPellets</code></li>
+              <li><code>Lives</code></li>
+              <li><code>Life</code></li>
+              <li><code>MainCamera</code></li>
+              <li><code>HomeScreenView</code></li>
+              <li><code>Resume_Button</code></li>
+              <li><code>PlayAgain_Button</code></li>
+              <li><code>LivesRemainingText</code></li>
+              <li><code>GameOverText</code></li>
+              <li><code>WinningScreenView</code></li>
+              <li><code>LoosingText</code></li>
+            </ul>
+          </div>
+          <div class="setup-card">
+            <h3>Named waypoints</h3>
+            <dl class="defs">
+              <div><dt><code>WayPoint (65)</code></dt><dd>Ghost house exit</dd></div>
+              <div><dt><code>WayPoint (36)</code></dt><dd>Referenced by the ghost scripts</dd></div>
+              <div><dt><code>WayPoint (74)</code> / <code>(75)</code></dt><dd>The two tunnel ends</dd></div>
+              <div><dt><code>WayPoint (4)</code></dt><dd>Clyde's retreat corner</dd></div>
+            </dl>
+          </div>
+          <div class="setup-card">
+            <h3>Graph and colliders</h3>
+            <ul class="bullets tight">
+              <li>
+                Every waypoint has a neighbor list filled in by hand. In the Scene view, red gizmo lines
+                draw those connections.
+              </li>
+              <li>The player has a Rigidbody and a child sphere tagged <code>PacMan_Sphere</code>.</li>
+              <li>Coins, pellets and ghosts use trigger colliders.</li>
+            </ul>
+          </div>
+          <div class="setup-card">
+            <h3>Tunnels and collectibles</h3>
+            <ul class="bullets tight">
+              <li>
+                A teleport trigger on each tunnel entrance warps whatever enters (Pac-Man or a ghost) to
+                the opposite side. Ghosts keep their pathing from the new spot.
+              </li>
+              <li>
+                Coins count toward the win and play a chomp sound. Power pellets scare all four ghosts.
+              </li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section id="scripts" class="block" aria-labelledby="scripts-title">
+        <h2 id="scripts-title">Script reference</h2>
+        <table class="scripts">
+          <thead>
+            <tr><th scope="col">Script</th><th scope="col">Role</th></tr>
+          </thead>
+          <tbody>
+            <tr><th scope="row"><code>Movement</code></th><td>First-person player controller</td></tr>
+            <tr><th scope="row"><code>Game</code></th><td>Singleton game manager: lives, win and lose, resets, UI, ghost release</td></tr>
+            <tr><th scope="row"><code>GhostBase</code></th><td>Shared ghost behavior: movement, fear state, capture</td></tr>
+            <tr><th scope="row"><code>Blinky</code></th><td>Red ghost, the direct chaser</td></tr>
+            <tr><th scope="row"><code>Pinky</code></th><td>Pink ghost, the ambusher</td></tr>
+            <tr><th scope="row"><code>Inky</code></th><td>Cyan ghost, the flanker</td></tr>
+            <tr><th scope="row"><code>Clyde</code></th><td>Orange ghost, chases until he gets close</td></tr>
+            <tr><th scope="row"><code>WayPointNeighbors</code></th><td>One node of the maze graph</td></tr>
+            <tr><th scope="row"><code>CoinCollision</code></th><td>Coin pickup</td></tr>
+            <tr><th scope="row"><code>PowerPelletCollision</code></th><td>Power pellet pickup, which scares the ghosts</td></tr>
+            <tr><th scope="row"><code>TeleportTrigger</code></th><td>Tunnel trigger that warps Pac-Man or a ghost</td></tr>
+            <tr><th scope="row"><code>TeleportationScript</code></th><td>Base class that provides <code>TeleportTo()</code></td></tr>
+          </tbody>
+        </table>
+
+        <h3 class="sub">Class hierarchy</h3>
+        <pre class="hierarchy" tabindex="0"><code>MonoBehaviour
+└── TeleportationScript          (TeleportTo)
+    ├── Movement                 (player)
+    └── GhostBase                (shared ghost logic)
+        ├── Blinky
+        ├── Pinky
+        ├── Inky
+        └── Clyde</code></pre>
+      </section>
+
+      <section class="cta" aria-labelledby="cta-title">
+        <h2 id="cta-title">Think you can outrun them?</h2>
+        <a class="button" href="https://first-person-pacman.netlify.app" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M4 2.5v11l9-5.5z" fill="currentColor" /></svg>
+          Play Here
+        </a>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/#work">&larr; Back to all projects</a>
+    </footer>
+
+  </body>
+</html>

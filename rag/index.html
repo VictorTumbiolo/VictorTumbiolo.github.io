@@ -1,0 +1,669 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Naive RAG for research papers (work in progress): a chat-with-your-paper app built on a deliberately simple retrieval baseline, improved one design choice at a time and tested with RAGAS and LangSmith."
+    />
+    <title>Naive RAG</title>
+    <script type="module" crossorigin src="/assets/rag-BHcTkLTX.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/projects-D6KBgP7A.js">
+    <link rel="modulepreload" crossorigin href="/assets/project-page-YFq_ndGV.js">
+    <link rel="stylesheet" crossorigin href="/assets/projects-BDO5pT66.css">
+  </head>
+  <body>
+    <a class="skip" href="#overview">Skip to content</a>
+
+    <header class="site-header">
+      <a class="brand" href="/" data-profile-name>Home</a>
+      <nav aria-label="Primary">
+        <a href="/#work">All projects</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="project-hero" aria-labelledby="page-title">
+        <a class="back" href="/#work">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M12 8H4M7.5 4.5L4 8l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+          All projects
+        </a>
+        <p class="eyebrow">Project &middot; Retrieval-augmented generation &middot; FastAPI &middot; React</p>
+        <p class="wip-badge"><span class="dot" aria-hidden="true"></span>WIP &middot; currently testing rerankers</p>
+        <h1 id="page-title">Naive RAG</h1>
+        <p class="lede">
+          A chat-with-your-paper web app. Upload an academic PDF, and Claude answers questions by retrieving only the
+          relevant passages instead of reading the whole paper. It is <strong>naive on purpose</strong>: a brute-force,
+          heuristic baseline that I am improving <strong>one design choice at a time</strong>, with each change tested
+          before it goes into the app.
+        </p>
+        <div class="actions">
+          <a class="button" href="#ui">See the app</a>
+          <a class="button secondary" href="#naive">Why &ldquo;naive&rdquo;</a>
+          <a class="button secondary" href="#testing">Testing</a>
+        </div>
+        <dl class="facts">
+          <div><dt>Status</dt><dd>WIP, offline for now</dd></div>
+          <div><dt>Backend</dt><dd>FastAPI, Python</dd></div>
+          <div><dt>Frontend</dt><dd>React 19, Vite, TypeScript</dd></div>
+          <div><dt>Vector DB</dt><dd>Qdrant</dd></div>
+          <div><dt>LLM</dt><dd>Claude Sonnet 4.6</dd></div>
+          <div><dt>Testing</dt><dd>RAGAS, LangSmith</dd></div>
+        </dl>
+      </section>
+
+      <nav class="toc" aria-label="On this page">
+        <a href="#overview">Overview</a>
+        <a href="#ui">The app</a>
+        <a href="#naive">Why naive</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#api">API</a>
+        <a href="#stack">Libraries</a>
+        <a href="#testing">Testing</a>
+        <a href="#findings">Findings</a>
+        <a href="#next">What's next</a>
+        <a href="#run">Running it</a>
+        <a href="#files">Files</a>
+        <a href="#references">Links</a>
+      </nav>
+
+      <section id="overview" class="block" aria-labelledby="overview-title">
+        <div class="callout" style="margin-top: 0; margin-bottom: 16px">
+          <p>
+            <strong>Work in progress.</strong> This project is being actively changed, and I am currently
+            <strong>testing rerankers</strong>, which is taking quite a bit of time. Everything here describes the app
+            as it stands today, and several choices below are placeholders that are waiting on those tests.
+          </p>
+        </div>
+        <div class="callout warn" style="margin-top: 0; margin-bottom: 32px">
+          <p>
+            <strong>Not currently hosted.</strong> The app used to be live, with the frontend on <strong>Vercel</strong>,
+            the backend on <strong>Railway</strong> and the vectors in <strong>Qdrant Cloud</strong>. I have taken it
+            down for a brief period while I make rapid updates, since the design is changing too often to keep a
+            deployment in step. It still runs locally (see <a href="#run">Running it</a>), and it should come back
+            once things settle.
+          </p>
+        </div>
+
+        <h2 id="overview-title">What it is</h2>
+        <div class="prose">
+          <p>
+            The app is built for students and researchers. A user uploads an academic PDF, the backend splits it into
+            chunks and embeds them into a vector database, and Claude answers questions by retrieving only the
+            passages that matter. The goal is <strong>lower token usage than a normal chatbot session</strong> while
+            keeping answers grounded in the paper.
+          </p>
+          <p>
+            It takes one paper at a time for now, and caps uploads at 15 pages. The interface shows a PDF viewer, a
+            chat panel and a paper list, and each answer reports how many tokens the retrieval used and how many it
+            saved against sending the whole paper.
+          </p>
+        </div>
+
+        <dl class="stats" style="margin-top: 24px">
+          <div><dt>Context taken</dt><dd>33%</dd></div>
+          <div><dt>Chunk size</dt><dd>800 chars</dd></div>
+          <div><dt>Page limit</dt><dd>15 pages</dd></div>
+        </dl>
+      </section>
+
+      <section id="ui" class="block" aria-labelledby="ui-title">
+        <h2 id="ui-title">The app</h2>
+        <p class="section-lede">
+          The main screen is a PDF viewer on the left and a chat panel on the right, with a collapsible paper list.
+          The viewer is resizable, and the app loads a sample paper on first visit so there is something to try.
+        </p>
+        <figure class="shot">
+          <img src="/rag/screens/main_ui.png" width="1902" height="910" alt="The app's main screen: a PDF of a research paper open in a viewer on the left, and an empty chat panel with a question box and Send and Test buttons on the right, under a brown header reading Research Paper Graph." loading="lazy" />
+          <figcaption>The main screen with a paper open and the chat waiting for a question.</figcaption>
+        </figure>
+
+        <h3 class="sub">Asking a question</h3>
+        <div class="split wide-fig">
+          <figure class="shot">
+            <img src="/rag/screens/sample_answer.png" width="747" height="840" alt="A chat panel where the user asked what the main contributions of the paper are, and the assistant answered with a numbered list of three contributions with bold key terms." loading="lazy" />
+            <figcaption>An answer to &ldquo;What are the main contributions of this paper?&rdquo;</figcaption>
+          </figure>
+          <div class="prose">
+            <p>
+              Claude isn't forced to search. It is given a single tool, <code>search_paper(query)</code>, and
+              <strong>decides whether to use it</strong>. A follow-up like &ldquo;explain point 2&rdquo; should skip
+              retrieval, while a question about the paper's content triggers a search with a rewritten, standalone
+              query.
+            </p>
+            <p>
+              The answer is written from whatever the search returned, and markdown renders in the chat bubble. The
+              backend keeps the last 5 exchanges of the conversation for context.
+            </p>
+          </div>
+        </div>
+
+        <figure class="shot wide" style="margin-top: 24px">
+          <img src="/rag/screens/full_view.png" width="1907" height="846" alt="The full app: the PDF viewer, a chat answer about the paper's contributions, and the Papers sidebar with Chunk PDF and Upload PDF buttons on the right." loading="lazy" />
+          <figcaption>The whole interface with an answer in place: viewer, chat and the Papers sidebar.</figcaption>
+        </figure>
+
+        <h3 class="sub">Token savings, shown on every answer</h3>
+        <div class="split wide-fig">
+          <div class="prose">
+            <p>
+              Below each answer is a one-line summary, with a tooltip that explains it. <strong>Tokens used</strong> is
+              the size of the passages retrieved to answer the question. <strong>Saved</strong> is the difference between
+              that and the paper's total token count, which is roughly what a full-paper approach would have cost.
+            </p>
+            <p>
+              In the example shown, the answer used 4,301 tokens out of a 12,419-token paper, which saved 8,118. That
+              is one run, and it lands a little above the 33% budget because the selection stops once the running total
+              reaches the budget, so the last chunk can overshoot it.
+            </p>
+          </div>
+          <div class="shot-stack">
+            <figure class="shot">
+              <img class="nat" src="/rag/screens/tokens_footer.png" width="424" height="34" alt="A footer line reading Tokens used: 4301, Saved: 8118, Total: 12419, with an information icon." loading="lazy" />
+              <img class="nat" src="/rag/screens/tokens_popup.png" width="237" height="137" alt="A tooltip explaining that tokens used is the size of the passages retrieved, and saved is the difference between that and the paper's total token count." loading="lazy" />
+              <figcaption>The token line, and the tooltip behind its info icon.</figcaption>
+            </figure>
+            <figure class="shot" style="width: fit-content; max-width: 100%">
+              <img class="nat" src="/rag/screens/papers_sidebar.png" width="320" height="849" alt="The Papers sidebar listing one uploaded paper, with Chunk PDF and Upload PDF buttons at the bottom." loading="lazy" style="max-height: 360px; width: auto; max-width: 100%" />
+              <figcaption>The Papers sidebar. Upload a PDF, then Chunk PDF to index it.</figcaption>
+            </figure>
+          </div>
+        </div>
+      </section>
+
+      <section id="naive" class="block" aria-labelledby="naive-title">
+        <h2 id="naive-title">Why &ldquo;naive&rdquo;</h2>
+        <div class="prose">
+          <p>
+            &ldquo;Naive RAG&rdquo; is the plain recipe: <strong>chunk, embed, top-k vector search, stuff the results
+            into the prompt, generate</strong>. This app follows it with simple heuristics, some of them brute force,
+            on purpose. It is a baseline, not a finished design.
+          </p>
+          <p>
+            The method is to improve it <strong>one design choice at a time</strong>. Each change is tested on its own
+            in an offline harness, and only then folded back into the app, instead of redesigning everything at once.
+            That keeps every improvement attributable to a single decision.
+          </p>
+        </div>
+
+        <h3 class="sub">The heuristics that are still placeholders</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Placeholder heuristics table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Current choice</th><th scope="col">Why it's naive</th><th scope="col">Intended improvement</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Take 33% of the paper's tokens as context (<code>TARGET_FRACTION = 0.33</code>)</th><td>The context size is a fixed fraction of the paper, regardless of how many chunks are actually relevant. A short, focused question still pulls 33%.</td><td>Select only <em>relevant</em> chunks: a score threshold, reranking or an adaptive k.</td></tr>
+              <tr><th scope="row">Chunking with <code>RecursiveCharacterTextSplitter</code>, 800 characters and 100 overlap</th><td>Semantic chunking tested better.</td><td>Move the app to the best-performing chunker.</td></tr>
+              <tr><th scope="row">Embeddings with <code>all-MiniLM-L6-v2</code> (384 dimensions)</th><td>A small general-purpose model. The eval harness uses <code>BAAI/bge-small-en-v1.5</code>.</td><td>Align the app's and the harness's embedding choices once tested.</td></tr>
+              <tr><th scope="row">No reranking</th><td>Results stay in raw vector order.</td><td>Add a reranker, which is what I am testing now.</td></tr>
+              <tr><th scope="row">PyMuPDF text extraction</th><td>It handles plain text only, so tables and figures are poorly represented.</td><td>Send table and figure images to the Claude API for text descriptions during chunking.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="architecture" class="block" aria-labelledby="architecture-title">
+        <h2 id="architecture-title">Architecture</h2>
+        <p class="section-lede">
+          A React single-page app talks to a FastAPI backend, which holds the RAG pipeline and talks to Qdrant and the
+          Anthropic API.
+        </p>
+
+        <figure class="diagram">
+          <div class="diagram-scroll" tabindex="0" role="region" aria-label="Architecture diagram (scrollable)">
+            <svg viewBox="0 0 860 330" width="860" height="330" role="img" aria-labelledby="ra-title ra-desc">
+              <title id="ra-title">Browser, FastAPI backend, Qdrant and the Anthropic API</title>
+              <desc id="ra-desc">
+                The React browser app sends uploads to POST /papers and questions to POST /ask on the FastAPI backend.
+                The backend extracts and chunks the PDF with PyMuPDF and LangChain, embeds the chunks with a
+                sentence-transformer, and stores them in Qdrant. For a question, Claude calls a search_paper tool, the
+                backend retrieves chunks from Qdrant, and Claude writes the answer.
+              </desc>
+              <defs>
+                <marker id="ra-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M0 0L10 5L0 10z" class="dg-head" />
+                </marker>
+              </defs>
+              <rect class="dg-band" x="0" y="0" width="250" height="330" />
+              <text class="dg-tag" x="14" y="22">BROWSER &middot; REACT + VITE</text>
+              <text class="dg-tag" x="274" y="22">FASTAPI BACKEND</text>
+              <text class="dg-tag" x="610" y="22">SERVICES</text>
+
+              <g class="dg-box"><rect x="20" y="48" width="210" height="62" /><text x="125" y="74" text-anchor="middle">PapersSidebar</text><text class="dg-sub" x="125" y="94" text-anchor="middle">upload, Chunk PDF</text></g>
+              <g class="dg-box"><rect x="20" y="132" width="210" height="62" /><text x="125" y="158" text-anchor="middle">ChatPanel</text><text class="dg-sub" x="125" y="178" text-anchor="middle">questions, token stats</text></g>
+              <g class="dg-box"><rect x="20" y="216" width="210" height="62" /><text x="125" y="242" text-anchor="middle">PaperViewer</text><text class="dg-sub" x="125" y="262" text-anchor="middle">PDF in an iframe</text></g>
+
+              <g class="dg-box dg-main"><rect x="274" y="48" width="300" height="230" />
+                <text x="424" y="78" text-anchor="middle">main.py &rarr; api.py &rarr; rag.py</text>
+                <text class="dg-sub" x="424" y="104" text-anchor="middle">CORS, routes, the RAG pipeline</text>
+                <text class="dg-sub" x="424" y="140" text-anchor="middle">PyMuPDF &rarr; LangChain splitter</text>
+                <text class="dg-sub" x="424" y="162" text-anchor="middle">SentenceTransformer embeddings</text>
+                <text class="dg-sub" x="424" y="184" text-anchor="middle">retrieve_chunks(): token budget</text>
+                <text class="dg-sub" x="424" y="206" text-anchor="middle">tool-use loop</text>
+                <text class="dg-sub" x="424" y="248" text-anchor="middle">models.py: ChatTurn, UserQuery</text>
+              </g>
+
+              <g class="dg-box"><rect x="610" y="48" width="230" height="100" /><text x="725" y="84" text-anchor="middle">Qdrant</text><text class="dg-sub" x="725" y="106" text-anchor="middle">collection paper_chunks</text><text class="dg-sub" x="725" y="126" text-anchor="middle">Qdrant Cloud, or local</text></g>
+              <g class="dg-box"><rect x="610" y="178" width="230" height="100" /><text x="725" y="214" text-anchor="middle">Anthropic API</text><text class="dg-sub" x="725" y="236" text-anchor="middle">Claude Sonnet 4.6</text><text class="dg-sub" x="725" y="256" text-anchor="middle">tool use, count_tokens</text></g>
+
+              <path class="dg-line" d="M230 79H274" marker-end="url(#ra-arrow)" />
+              <path class="dg-line" d="M230 163H274" marker-start="url(#ra-arrow)" marker-end="url(#ra-arrow)" />
+              <text class="dg-sub" x="252" y="70" text-anchor="middle">/papers</text>
+              <text class="dg-sub" x="252" y="154" text-anchor="middle">/ask</text>
+              <path class="dg-line" d="M574 98H610" marker-start="url(#ra-arrow)" marker-end="url(#ra-arrow)" />
+              <path class="dg-line" d="M574 228H610" marker-start="url(#ra-arrow)" marker-end="url(#ra-arrow)" />
+              <path class="dg-line dg-dash" d="M725 178V148" marker-end="url(#ra-arrow)" />
+              <text class="dg-sub" x="737" y="168">search_paper tool</text>
+            </svg>
+          </div>
+          <figcaption>
+            The dashed arrow is the tool call: when Claude decides to search, the backend runs the vector search in
+            Qdrant and hands the passages back as the tool result.
+          </figcaption>
+        </figure>
+
+        <div class="split wide-fig" style="margin-top: 32px; align-items: start">
+          <div>
+            <h3 class="sub" style="margin-top: 0">Ingestion <code>POST /papers</code></h3>
+            <ol class="steps">
+              <li>The user uploads one or more PDFs, then clicks <strong>Chunk PDF</strong>.</li>
+              <li>The backend skips any file whose filename already has chunks in Qdrant (<code>already_chunked</code>).</li>
+              <li>It rejects PDFs over <strong>15 pages</strong> (<code>rejected_too_long</code>), and the frontend says to limit them to 15 pages or less.</li>
+              <li>It extracts the text with PyMuPDF and splits it with <code>RecursiveCharacterTextSplitter</code> (800 characters, 100 overlap).</li>
+              <li>It embeds each chunk with <code>all-MiniLM-L6-v2</code>, counts each chunk's tokens with Anthropic's <code>count_tokens</code>, and upserts to Qdrant with a payload of <code>{filename, chunk_index, text, tokens}</code>.</li>
+            </ol>
+          </div>
+          <div>
+            <h3 class="sub" style="margin-top: 0">Question <code>POST /ask</code></h3>
+            <ol class="steps">
+              <li>The frontend sends the question, the filename and the chat history, and the backend trims the history to the last 5 exchanges.</li>
+              <li>Claude has one tool, <code>search_paper(query)</code>, and decides whether to search.</li>
+              <li><code>retrieve_chunks()</code> embeds the query and pulls up to 500 candidate chunks filtered to that filename. It then walks them in similarity order <strong>until the running token total reaches 33% of the paper's total</strong>.</li>
+              <li>The chunks are joined with <code>---</code> separators and returned to Claude as the tool result, and Claude writes the answer.</li>
+              <li>The response includes <code>tokens_used</code> and <code>total_tokens</code>, which the UI shows as Tokens used, Saved and Total.</li>
+            </ol>
+          </div>
+        </div>
+      </section>
+
+      <section id="api" class="block" aria-labelledby="api-title">
+        <h2 id="api-title">The frontend and backend API</h2>
+        <p class="section-lede">
+          The base URL comes from <code>VITE_API_URL</code>. CORS allows <code>http://localhost:5173</code> and the
+          Vercel origin the app used to run on.
+        </p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="API endpoints table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Endpoint</th><th scope="col">Method</th><th scope="col">Request</th><th scope="col">Response</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>/papers</code></th><td>POST</td><td><code>multipart/form-data</code> with a repeated <code>files</code> field of PDFs</td><td><code>{ papers: [{ filename, num_chunks, status, page_count? }] }</code>, where <code>status</code> is <code>chunked</code>, <code>already_chunked</code> or <code>rejected_too_long</code></td></tr>
+              <tr><th scope="row"><code>/ask</code></th><td>POST</td><td>JSON <code>{ question, filename, history: [{role, text}] }</code></td><td><code>{ received, searches[], searched, tokens_used, total_tokens }</code></td></tr>
+              <tr><th scope="row"><code>/test</code></th><td>POST</td><td><code>{}</code></td><td><code>{ "test": "test" }</code>, a health check that separates backend problems from Qdrant Cloud or Claude API problems. It is behind the Test button.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="bullets">
+          <li><strong>Errors.</strong> <code>/ask</code> returns 400 on an empty question and 500 on any pipeline failure, and the UI says &ldquo;Something went wrong reaching the backend.&rdquo; Upload failures show in the sidebar.</li>
+          <li><strong>Models.</strong> Pydantic models <code>ChatTurn {role: "user" | "assistant", text}</code> and <code>UserQuery {question, filename, history=[]}</code>.</li>
+          <li><strong>Papers are identified by filename.</strong> It is the Qdrant payload filter key and the frontend's link between a selected paper and its chunks. PDFs themselves are never stored on the server, and the viewer uses a browser object URL.</li>
+          <li><strong>Config constants</strong> in <code>rag.py</code>: <code>HISTORY_EXCHANGES = 5</code>, <code>MAX_TOOL_ROUNDS = 1</code>, <code>MAX_CANDIDATE_CHUNKS = 500</code>, <code>TARGET_FRACTION = 0.33</code>, model <code>claude-sonnet-4-6</code>.</li>
+        </ul>
+      </section>
+
+      <section id="stack" class="block" aria-labelledby="stack-title">
+        <h2 id="stack-title">Libraries and services</h2>
+
+        <h3 class="sub">Backend <span class="aside">Python</span></h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Backend libraries table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>fastapi</code>, <code>uvicorn</code>, <code>starlette</code>, <code>python-multipart</code></th><td>The web API, the ASGI server and file-upload parsing.</td></tr>
+              <tr><th scope="row"><code>pydantic</code></th><td>Request and response models.</td></tr>
+              <tr><th scope="row"><code>pymupdf</code></th><td>PDF text extraction, page counting and abstract extraction.</td></tr>
+              <tr><th scope="row"><code>langchain-text-splitters</code></th><td><code>RecursiveCharacterTextSplitter</code>.</td></tr>
+              <tr><th scope="row"><code>sentence-transformers</code>, <code>torch</code>, <code>transformers</code>, <code>tokenizers</code>, <code>safetensors</code>, <code>huggingface_hub</code></th><td>The embedding model, <code>all-MiniLM-L6-v2</code>.</td></tr>
+              <tr><th scope="row"><code>qdrant-client</code></th><td>The vector database client: Qdrant Cloud in production, or a local Docker instance.</td></tr>
+              <tr><th scope="row"><code>anthropic</code></th><td>The Claude API, for chat with tool use and for <code>count_tokens</code>.</td></tr>
+              <tr><th scope="row"><code>python-dotenv</code></th><td>Loads <code>QDRANT_URL</code>, <code>QDRANT_API_KEY</code> and <code>ANTHROPIC_API_KEY</code>.</td></tr>
+              <tr><th scope="row"><code>langchain-core</code>, <code>langsmith</code></th><td>Tracing and experiments. LangSmith is used for latency and for cost and token counts.</td></tr>
+              <tr><th scope="row"><code>numpy</code>, <code>pandas</code>, <code>scikit-learn</code>, <code>scipy</code>, <code>matplotlib</code>, <code>networkx</code></th><td>Analysis and plotting support. They are not used on the request path.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Frontend <span class="aside">TypeScript</span></h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Frontend libraries table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>react</code>, <code>react-dom</code> (19)</th><td>The UI.</td></tr>
+              <tr><th scope="row"><code>react-router-dom</code> (7)</th><td>Routing: <code>/</code> for the main page and <code>/about</code>.</td></tr>
+              <tr><th scope="row"><code>react-markdown</code></th><td>Renders Claude's markdown answers.</td></tr>
+              <tr><th scope="row"><code>vite</code>, <code>@vitejs/plugin-react</code></th><td>The dev server and build.</td></tr>
+              <tr><th scope="row"><code>typescript</code>, <code>typescript-eslint</code>, <code>eslint</code></th><td>Type checking and linting, with the react-hooks and react-refresh plugins.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Hosting <span class="aside">historical, currently down</span></h3>
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Vercel</h3>
+            <p>The frontend. A <code>vercel.json</code> rewrites every route to <code>index.html</code> so client-side routing works.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Railway</h3>
+            <p>The FastAPI backend.</p>
+          </li>
+          <li class="ghost" style="--c: var(--fg)">
+            <h3>Qdrant Cloud</h3>
+            <p>The vector database. A local Docker Qdrant is an alternative.</p>
+          </li>
+          <li class="ghost" style="--c: var(--muted-fg)">
+            <h3>Anthropic API</h3>
+            <p>The LLM. This is still in use when the app runs locally.</p>
+          </li>
+        </ul>
+      </section>
+
+      <section id="testing" class="block" aria-labelledby="testing-title">
+        <h2 id="testing-title">How design choices get tested</h2>
+        <p class="section-lede">
+          Design choices are tested in a standalone offline harness, kept separate from the app's runtime code. It
+          isn't in the app's GitHub repository, since it only runs locally to decide what to change in the app.
+        </p>
+
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>RAGAS</h3>
+            <p>Evaluates retrieval and generation quality. The plan is to use a Claude Sonnet judge.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>LangSmith</h3>
+            <p>Tracks latency and API cost, including token counts, for each run.</p>
+          </li>
+          <li class="ghost" style="--c: var(--fg)">
+            <h3>Retrieval metrics</h3>
+            <p>Hit, recall, all-gold, precision, distinct documents and MRR, computed at several cutoffs by a script in the harness.</p>
+          </li>
+          <li class="ghost" style="--c: var(--muted-fg)">
+            <h3>Cached generation</h3>
+            <p>Responses are cached on disk by a hash of the request, so reruns don't spend tokens twice.</p>
+          </li>
+        </ul>
+
+        <h3 class="sub">Datasets</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Datasets table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row">MultiHop-RAG</th><td>The primary benchmark: 2,255 questions after dropping the null-query items, each with gold evidence document ids (several gold documents for multi-hop questions). Dataset <code>yixuantt/MultiHopRAG</code>.</td></tr>
+              <tr><th scope="row">RAGBench, HotpotQA</th><td>An earlier golden set and corpus.</td></tr>
+              <tr><th scope="row">rag-mini-wikipedia</th><td>Used only for initial exploration.</td></tr>
+              <tr><th scope="row">Targeted datasets</th><td>Datasets that target one aspect at a time, such as generation quality on figures and tables.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">The harness pipeline</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Harness pipeline table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row">Corpus and golden set</th><td>Convert dataset rows into <code>{id, question, answer, ground_truth_doc_ids}</code> and a deduplicated corpus.</td></tr>
+              <tr><th scope="row">Chunking</th><td>Fixed-size token windows with overlap: 256 tokens and 32 overlap, measured with the embedding model's tokenizer and mapped back to character offsets. Recursive and semantic chunkers were tested elsewhere.</td></tr>
+              <tr><th scope="row">Embedding</th><td><code>BAAI/bge-small-en-v1.5</code> with normalized embeddings and the BGE query prefix, on GPU if available.</td></tr>
+              <tr><th scope="row">Vector store</th><td>A local Qdrant on port 6335, cosine distance, collection <code>fixed256_bgesmall</code>, with a payload index on <code>doc_id</code>.</td></tr>
+              <tr><th scope="row">Retrieval</th><td>Batched top-50 queries, scored at several cutoffs.</td></tr>
+              <tr><th scope="row">Generation</th><td>Claude Haiku 4.5 at temperature 0 and 300 max tokens, with a strict &ldquo;answer only from the context, otherwise say there isn't enough information&rdquo; prompt and a context numbered <code>[1]</code> to <code>[k]</code>. Threaded across 4 workers.</td></tr>
+              <tr><th scope="row">Planned grid</th><td>config with fixed seeds, then chunkers (fixed, recursive, semantic), then index and retrieve, then rerankers (none, cross-encoder, LLM), then generate with Haiku, then evaluate with RAGAS and a Sonnet judge, then cached results and a summary table.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <details class="fold">
+          <summary>Harness libraries</summary>
+          <div>
+            <p class="note" style="margin-top: 0">
+              <code>ragas</code>, <code>datasets</code>, <code>anthropic</code>, <code>openai</code>,
+              <code>instructor</code>, <code>langchain</code> (with <code>langchain-anthropic</code>,
+              <code>-openai</code>, <code>-huggingface</code>, <code>-community</code>, <code>-classic</code> and
+              <code>-text-splitters</code>), <code>langgraph</code>, <code>langsmith</code>,
+              <code>qdrant-client</code>, <code>sentence-transformers</code>, <code>torch</code>,
+              <code>transformers</code>, <code>tiktoken</code>, <code>scikit-learn</code>,
+              <code>scikit-network</code>, <code>scipy</code>, <code>numpy</code>, <code>pandas</code>,
+              <code>pyarrow</code>, <code>aiohttp</code>, <code>tqdm</code>, <code>python-dotenv</code> and
+              <code>pydantic</code>. Haiku is the generator, and Sonnet is the planned RAGAS judge.
+            </p>
+          </div>
+        </details>
+      </section>
+
+      <section id="findings" class="block" aria-labelledby="findings-title">
+        <h2 id="findings-title">Findings so far</h2>
+
+        <h3 class="sub" style="margin-top: 0">Experiments</h3>
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Chunking</h3>
+            <p>Three strategies were tested: fixed-size with a sliding window, recursive and semantic. <strong>Semantic chunking performed best, but only by a small margin.</strong></p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Reranking <span>in progress</span></h3>
+            <p>The reranker (&ldquo;Rechunker&rdquo;) shows <strong>notable gains</strong>, but it is <strong>slow to test</strong>. It adds an extra scoring pass, and the LLM variant adds extra model calls across the whole grid. This is the work taking up my time right now.</p>
+          </li>
+        </ul>
+
+        <h3 class="sub">Baseline retrieval, before any reranker</h3>
+        <p class="section-lede">
+          Fixed 256-token chunks, <code>bge-small</code> embeddings and all 2,255 MultiHop-RAG questions, scored at
+          several cutoffs <em>k</em>.
+        </p>
+
+        <figure class="chart" style="margin-top: 0">
+          <div class="paper rc">
+            <div class="diagram-scroll" tabindex="0" role="region" aria-label="Retrieval metrics chart (scrollable)">
+              <svg viewBox="0 0 640 320" width="640" height="320" role="img" aria-labelledby="rc-t rc-d"><title id="rc-t">Baseline retrieval metrics against k</title><desc id="rc-d">Hit rate rises from 0.594 at k=1 to 0.996 at k=50. Recall rises from 0.248 to 0.880. All-gold rises from 0 to 0.695. Precision falls from 0.594 to 0.233.</desc>
+              <line class="rc-grid" x1="48" x2="530" y1="276.0" y2="276.0"/><text class="rc-ax" x="40" y="280.0" text-anchor="end">0</text>
+              <line class="rc-grid" x1="48" x2="530" y1="211.0" y2="211.0"/><text class="rc-ax" x="40" y="215.0" text-anchor="end">0.25</text>
+              <line class="rc-grid" x1="48" x2="530" y1="146.0" y2="146.0"/><text class="rc-ax" x="40" y="150.0" text-anchor="end">0.5</text>
+              <line class="rc-grid" x1="48" x2="530" y1="81.0" y2="81.0"/><text class="rc-ax" x="40" y="85.0" text-anchor="end">0.75</text>
+              <line class="rc-grid" x1="48" x2="530" y1="16.0" y2="16.0"/><text class="rc-ax" x="40" y="20.0" text-anchor="end">1</text>
+              <text class="rc-ax" x="48.0" y="298" text-anchor="middle">1</text>
+              <text class="rc-ax" x="128.3" y="298" text-anchor="middle">3</text>
+              <text class="rc-ax" x="208.7" y="298" text-anchor="middle">5</text>
+              <text class="rc-ax" x="289.0" y="298" text-anchor="middle">10</text>
+              <text class="rc-ax" x="369.3" y="298" text-anchor="middle">20</text>
+              <text class="rc-ax" x="449.7" y="298" text-anchor="middle">30</text>
+              <text class="rc-ax" x="530.0" y="298" text-anchor="middle">50</text>
+              <text class="rc-ax" x="289.0" y="316" text-anchor="middle">k (chunks retrieved)</text>
+              <polyline class="rc-line s1" points="48.0,121.6 128.3,69.8 208.7,51.4 289.0,33.9 369.3,22.5 449.7,18.6 530.0,17.0"/>
+              <circle class="rc-dot s1" cx="48.0" cy="121.6" r="3.5"/>
+              <circle class="rc-dot s1" cx="128.3" cy="69.8" r="3.5"/>
+              <circle class="rc-dot s1" cx="208.7" cy="51.4" r="3.5"/>
+              <circle class="rc-dot s1" cx="289.0" cy="33.9" r="3.5"/>
+              <circle class="rc-dot s1" cx="369.3" cy="22.5" r="3.5"/>
+              <circle class="rc-dot s1" cx="449.7" cy="18.6" r="3.5"/>
+              <circle class="rc-dot s1" cx="530.0" cy="17.0" r="3.5"/>
+              <polyline class="rc-line s2" points="48.0,211.5 128.3,165.5 208.7,142.4 289.0,109.6 369.3,78.9 449.7,63.3 530.0,47.2"/>
+              <circle class="rc-dot s2" cx="48.0" cy="211.5" r="3.5"/>
+              <circle class="rc-dot s2" cx="128.3" cy="165.5" r="3.5"/>
+              <circle class="rc-dot s2" cx="208.7" cy="142.4" r="3.5"/>
+              <circle class="rc-dot s2" cx="289.0" cy="109.6" r="3.5"/>
+              <circle class="rc-dot s2" cx="369.3" cy="78.9" r="3.5"/>
+              <circle class="rc-dot s2" cx="449.7" cy="63.3" r="3.5"/>
+              <circle class="rc-dot s2" cx="530.0" cy="47.2" r="3.5"/>
+              <polyline class="rc-line s3" points="48.0,276.0 128.3,242.7 208.7,221.9 289.0,186.3 369.3,148.6 449.7,125.7 530.0,95.3"/>
+              <circle class="rc-dot s3" cx="48.0" cy="276.0" r="3.5"/>
+              <circle class="rc-dot s3" cx="128.3" cy="242.7" r="3.5"/>
+              <circle class="rc-dot s3" cx="208.7" cy="221.9" r="3.5"/>
+              <circle class="rc-dot s3" cx="289.0" cy="186.3" r="3.5"/>
+              <circle class="rc-dot s3" cx="369.3" cy="148.6" r="3.5"/>
+              <circle class="rc-dot s3" cx="449.7" cy="125.7" r="3.5"/>
+              <circle class="rc-dot s3" cx="530.0" cy="95.3" r="3.5"/>
+              <polyline class="rc-line s4" points="48.0,121.6 128.3,139.2 208.7,151.7 289.0,168.6 369.3,187.9 449.7,199.8 530.0,215.4"/>
+              <circle class="rc-dot s4" cx="48.0" cy="121.6" r="3.5"/>
+              <circle class="rc-dot s4" cx="128.3" cy="139.2" r="3.5"/>
+              <circle class="rc-dot s4" cx="208.7" cy="151.7" r="3.5"/>
+              <circle class="rc-dot s4" cx="289.0" cy="168.6" r="3.5"/>
+              <circle class="rc-dot s4" cx="369.3" cy="187.9" r="3.5"/>
+              <circle class="rc-dot s4" cx="449.7" cy="199.8" r="3.5"/>
+              <circle class="rc-dot s4" cx="530.0" cy="215.4" r="3.5"/>
+              <text class="rc-lab s1" x="538" y="21.0">Hit</text>
+              <text class="rc-lab s2" x="538" y="51.2">Recall</text>
+              <text class="rc-lab s3" x="538" y="99.3">All-gold</text>
+              <text class="rc-lab s4" x="538" y="219.4">Precision</text>
+              </svg>
+            </div>
+          </div>
+          <figcaption>
+            Baseline retrieval metrics against <em>k</em>. Hit and recall climb as more chunks are retrieved, while
+            precision falls, and all-gold (every gold document found, which matters for multi-hop questions) climbs
+            more slowly.
+          </figcaption>
+        </figure>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Baseline retrieval table" style="margin-top: 24px">
+          <table class="data-table results">
+            <thead>
+              <tr><th scope="col">k</th><th scope="col">Hit</th><th scope="col">Recall</th><th scope="col">All-gold</th><th scope="col">Precision</th><th scope="col">Distinct docs</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">1</th><td>0.594</td><td>0.248</td><td>0.000</td><td>0.594</td><td>1.0</td></tr>
+              <tr><th scope="row">3</th><td>0.793</td><td>0.425</td><td>0.128</td><td>0.526</td><td>2.2</td></tr>
+              <tr><th scope="row">5</th><td>0.864</td><td>0.514</td><td>0.208</td><td>0.478</td><td>3.3</td></tr>
+              <tr><th scope="row">10</th><td>0.931</td><td>0.640</td><td>0.345</td><td>0.413</td><td>5.5</td></tr>
+              <tr><th scope="row">20</th><td>0.975</td><td>0.758</td><td>0.490</td><td>0.339</td><td>9.2</td></tr>
+              <tr><th scope="row">30</th><td>0.990</td><td>0.818</td><td>0.578</td><td>0.293</td><td>12.6</td></tr>
+              <tr><th scope="row">50</th><td>0.996</td><td>0.880</td><td>0.695</td><td>0.233</td><td>18.9</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          The MRR is 0.712. The metrics: <strong>Hit</strong> means at least one gold document is in the top <em>k</em>,
+          <strong>Recall</strong> is the fraction of gold documents found, <strong>All-gold</strong> means every gold
+          document is found, <strong>Precision</strong> is the fraction of the top <em>k</em> chunks that come from gold
+          documents, and <strong>MRR</strong> is the reciprocal rank of the first gold document. The reranker results
+          aren't in this table because those tests are still running.
+        </p>
+      </section>
+
+      <section id="next" class="block" aria-labelledby="next-title">
+        <h2 id="next-title">What's next</h2>
+        <ol class="steps">
+          <li><strong>Finish testing rerankers</strong> (none, cross-encoder and LLM) and decide whether the gains are worth the extra time and calls.</li>
+          <li><strong>Replace the 33% heuristic</strong> with relevance-based selection: a score threshold, reranking or an adaptive k.</li>
+          <li><strong>Move the app to the best chunker</strong> (semantic) and align its embedding model with the harness's.</li>
+          <li><strong>Read tables and figures.</strong> The PDF reader handles plain text only. The plan is to send table and figure images to the Claude API for a text description of each, then chunk and embed those descriptions with the prose so they can be retrieved like any other passage.</li>
+          <li><strong>Bring it back online</strong> once the design settles.</li>
+        </ol>
+
+        <h3 class="sub">Longer term: more than one paper</h3>
+        <p class="section-lede">
+          The app handles one paper at a time. The planned extension is retrieval over <em>clusters</em> of papers, to
+          understand how papers relate to each other as well as what each says alone.
+        </p>
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Literature Review Assistant</h3>
+            <p>RAG over a small cluster of related papers for a systematic literature review. It would surface connections, contradictions and open questions, show reference chains as a graph with edge color and weight for relevance, and let a researcher add their in-progress work to the cluster to find gaps or strengthen a motivation section.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Topic-Scale Exploration</h3>
+            <p>The same idea across hundreds of papers on a broad topic, such as large language models. Subtopic clusters (attention mechanisms, tokenization, parsing algorithms) would emerge naturally and be shown with the same graph approach, to help narrow into a subtopic.</p>
+          </li>
+        </ul>
+      </section>
+
+      <section id="run" class="block" aria-labelledby="run-title">
+        <h2 id="run-title">Running it locally</h2>
+        <p class="section-lede">The hosted version is down, but the app runs locally.</p>
+        <pre class="codeblock" tabindex="0"><code># Backend (from Research_App_backend/)
+pip install -r requirements.txt
+# .env needs QDRANT_URL, QDRANT_API_KEY and ANTHROPIC_API_KEY
+python main.py                  # http://127.0.0.1:8000
+
+# Frontend (from Research_App_Frontend/)
+npm install
+# set VITE_API_URL=http://localhost:8000 in .env.local
+npm run dev                     # http://localhost:5173
+
+# Eval harness (from RAG Eval/transfer/)
+# MultiHop_Setup.py -&gt; index_baseline.py (needs local Qdrant on port 6335)
+#   -&gt; retrieve_eval.py -&gt; generate.py</code></pre>
+        <p class="note" style="margin-top: 0">
+          <code>rag.py</code> has a commented-out local Qdrant client (<code>QdrantClient(host="localhost", port=6333)</code>)
+          as an alternative to Qdrant Cloud. It also calls <code>create_payload_index</code> on
+          <code>paper_chunks</code> at import time, so that collection has to exist before the backend starts.
+        </p>
+      </section>
+
+      <section id="files" class="block" aria-labelledby="files-title">
+        <h2 id="files-title">What each file does</h2>
+        <details class="fold" style="margin-top: 0">
+          <summary>Backend, <code>Research_App_backend/</code></summary>
+          <div>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Backend files table">
+              <table class="data-table files">
+                <tbody>
+                  <tr><th scope="row"><code>main.py</code></th><td>Creates the FastAPI app, configures CORS, mounts the router, and runs uvicorn on <code>127.0.0.1:8000</code> when executed directly.</td></tr>
+                  <tr><th scope="row"><code>api.py</code></th><td>The three routes: <code>/ask</code> (validates input and calls <code>rag.run_conversation</code>), <code>/papers</code> (dedupe check, 15-page limit, extract, chunk and store) and <code>/test</code>.</td></tr>
+                  <tr><th scope="row"><code>rag.py</code></th><td>The whole pipeline. It loads the embedding model, the Qdrant client and the Anthropic client, and holds <code>store_chunks</code>, <code>count_tokens</code>, the PDF helpers, <code>chunk_text</code>, <code>retrieve_chunks</code>, <code>paper_already_chunked</code>, the system prompt and tool schema, <code>build_messages</code> (history trimming) and <code>run_conversation</code> (the tool-use loop).</td></tr>
+                  <tr><th scope="row"><code>models.py</code></th><td>The Pydantic models <code>ChatTurn</code> and <code>UserQuery</code>.</td></tr>
+                  <tr><th scope="row"><code>requirements.txt</code></th><td>Pinned Python dependencies.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+        <details class="fold">
+          <summary>Frontend, <code>Research_App_Frontend/</code></summary>
+          <div>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Frontend files table">
+              <table class="data-table files">
+                <tbody>
+                  <tr><th scope="row"><code>vercel.json</code></th><td>Rewrites all routes to <code>/index.html</code> so client-side routing works on Vercel.</td></tr>
+                  <tr><th scope="row"><code>public/*.pdf</code></th><td>A sample paper that loads on first visit.</td></tr>
+                  <tr><th scope="row"><code>src/main.tsx</code>, <code>src/App.tsx</code></th><td>The React entry, and the top-level state (<code>papers</code>, <code>messages</code>, <code>selectedPaperId</code>) so it survives navigating between routes, plus the <code>/</code> and <code>/about</code> routes.</td></tr>
+                  <tr><th scope="row"><code>src/pages/MainPage.tsx</code></th><td>The main screen: upload, Chunk PDF, sending questions, paper selection and removal, the sample-paper auto-load, and the layout of viewer, chat and sidebar.</td></tr>
+                  <tr><th scope="row"><code>src/pages/AboutPage.tsx</code></th><td>The project write-up inside the app: use case, stack, the RAG pipeline, the tool-use design, a comparison of 15%, 25%, 33% and 100% chunk thresholds, and future directions.</td></tr>
+                  <tr><th scope="row"><code>src/components/</code></th><td><code>ChatPanel</code> (chat bubbles, the token line with its tooltip, the Send and Test buttons), <code>PapersSidebar</code> (the paper list, upload and Chunk PDF), <code>PaperViewer</code> (a resizable PDF viewer in an iframe on a blob URL) and <code>Nav</code>.</td></tr>
+                  <tr><th scope="row"><code>src/hooks/usePaperResize.ts</code></th><td>Drag-to-resize for the PDF panel, clamped between a minimum and maximum width.</td></tr>
+                  <tr><th scope="row"><code>src/services/</code></th><td><code>paperService.submitPapers()</code> (the multipart POST to <code>/papers</code>) and <code>llmQuestionService.sendQuestion()</code> (the JSON POST to <code>/ask</code>), with types for both.</td></tr>
+                  <tr><th scope="row"><code>src/styles/*.css</code></th><td>Styling for the shell, chat, sidebar, viewer and About page.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+        <details class="fold">
+          <summary>Repository layout</summary>
+          <div>
+            <pre class="codeblock" tabindex="0"><code>Research_App/
+├── Research_App_backend/      FastAPI + RAG pipeline (Python)
+└── Research_App_Frontend/     React + Vite + TypeScript UI</code></pre>
+            <p class="note">The evaluation harness (<code>RAG Eval/</code>) lives outside the repository and runs only locally.</p>
+          </div>
+        </details>
+      </section>
+
+      <section id="references" class="block" aria-labelledby="references-title">
+        <h2 id="references-title">Benchmarks and tools</h2>
+        <ol class="refs">
+          <li>
+            Tang, Y. and Yang, Y. <cite>MultiHop-RAG: Benchmarking Retrieval-Augmented Generation for Multi-Hop Queries.</cite> 2024. The primary benchmark.
+            <span class="ref-links"><a href="https://arxiv.org/abs/2401.15391" target="_blank" rel="noopener noreferrer">arXiv</a><a href="https://huggingface.co/datasets/yixuantt/MultiHopRAG" target="_blank" rel="noopener noreferrer">Dataset</a></span>
+          </li>
+          <li>
+            <cite>Ragas</cite>, a toolkit for evaluating LLM applications. Used for retrieval and generation evaluation.
+            <span class="ref-links"><a href="https://github.com/explodinggradients/ragas" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/#work">&larr; Back to all projects</a>
+    </footer>
+
+  </body>
+</html>
