@@ -1,0 +1,1228 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="ML Algorithm Visualizer: ID3, backpropagation and a genetic algorithm from Mitchell's Machine Learning, written from scratch in plain Java behind a Spring Boot API, with a React, TypeScript and React Flow frontend."
+    />
+    <title>ML Algorithm Visualizer</title>
+    <script type="module" crossorigin src="/assets/mlviz-f4Blti2l.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/projects-D6KBgP7A.js">
+    <link rel="modulepreload" crossorigin href="/assets/project-page-YFq_ndGV.js">
+    <link rel="stylesheet" crossorigin href="/assets/projects-BDO5pT66.css">
+  </head>
+  <body>
+    <a class="skip" href="#overview">Skip to content</a>
+
+    <header class="site-header">
+      <a class="brand" href="/" data-profile-name>Home</a>
+      <nav aria-label="Primary">
+        <a href="/#work">All projects</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="project-hero" aria-labelledby="page-title">
+        <a class="back" href="/#work">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M12 8H4M7.5 4.5L4 8l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+          All projects
+        </a>
+        <p class="eyebrow">Project &middot; Full-stack &middot; Machine learning &middot; Java &middot; React</p>
+        <h1 id="page-title">ML Algorithm Visualizer</h1>
+        <p class="lede">
+          An interactive app for training three classic machine-learning algorithms and looking inside them:
+          an <strong>ID3 decision tree</strong>, a <strong>backpropagation neural network</strong> and a
+          <strong>genetic algorithm</strong>. The algorithms come from Tom Mitchell's 1997 textbook
+          <em>Machine Learning</em>, and every one is written <strong>from scratch with only the Java standard
+          library</strong>. A Spring Boot API serves them to a React, TypeScript, Vite and React Flow frontend.
+        </p>
+        <div class="actions">
+          <a class="button" href="#id3">Watch the demos</a>
+          <a class="button secondary" href="#architecture">Architecture</a>
+          <a class="button secondary" href="#status">Known bugs</a>
+        </div>
+        <dl class="facts">
+          <div><dt>Algorithms</dt><dd>ID3, backprop, GA</dd></div>
+          <div><dt>Backend</dt><dd>Java 17, Spring Boot 3.5</dd></div>
+          <div><dt>Frontend</dt><dd>React 19, TypeScript, Vite</dd></div>
+          <div><dt>ML libraries</dt><dd>None, JDK only</dd></div>
+          <div><dt>Source</dt><dd>Mitchell, 1997</dd></div>
+          <div><dt>Status</dt><dd>Shelved</dd></div>
+        </dl>
+      </section>
+
+      <nav class="toc" aria-label="On this page">
+        <a href="#overview">Overview</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#backend">Backend API</a>
+        <a href="#frontend">Frontend</a>
+        <a href="#datasets">Datasets</a>
+        <a href="#id3">ID3</a>
+        <a href="#nn">Neural network</a>
+        <a href="#ga">Genetic algorithm</a>
+        <a href="#stdlib">Standard library</a>
+        <a href="#status">Status</a>
+        <a href="#run">Running it</a>
+        <a href="#references">References</a>
+      </nav>
+
+      <section id="overview" class="block" aria-labelledby="overview-title">
+        <h2 id="overview-title">What it is</h2>
+        <div class="prose">
+          <p>
+            Most machine-learning demos hand you a trained model and a number. This one is built to show the
+            learning: the tree being grown, the weights each neuron ended up with, a population of rule sets
+            evolving generation by generation. Each algorithm has a results page, an About page that
+            summarizes the matching chapter of the book, a dataset viewer, and at least one graph you can
+            click into.
+          </p>
+        </div>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="The three algorithms table">
+          <table class="data-table results">
+            <thead>
+              <tr><th scope="col">Algorithm</th><th scope="col">Mitchell</th><th scope="col">Dataset</th><th scope="col">What you can see in the UI</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">ID3 decision tree</th><td>Ch. 3, <em>Decision Tree Learning</em></td><td>PlayTennis</td><td>The learned tree as an interactive graph, the training examples at every node, the IF&ndash;THEN rules and test accuracy.</td></tr>
+              <tr><th scope="row">Neural network (backpropagation)</th><td>Ch. 4, <em>Artificial Neural Networks</em></td><td>Iris</td><td>The network topology as a graph, each node's learned weights, accuracy, and a per-example prediction report.</td></tr>
+              <tr><th scope="row">Genetic algorithm (GABIL-style rule learner)</th><td>Ch. 9, <em>Genetic Algorithms</em></td><td>PlayTennis</td><td>A configurable archipelago of island populations, generation-by-generation evolution, each population's hypotheses, and bit-string rules decoded into readable IF&ndash;THEN form.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="callout" style="margin-top: 24px">
+          <p>
+            <strong>Written from scratch.</strong> The backend has no ML, math or data-science dependencies.
+            <code>pom.xml</code> declares only <code>spring-boot-starter-web</code> (for HTTP and JSON) and
+            <code>spring-boot-starter-test</code>. Entropy, information gain, forward propagation,
+            backpropagation with momentum, selection, crossover, mutation and rule matching are all
+            hand-written on top of <code>java.util</code>, <code>java.lang.Math</code> and a little
+            <code>java.lang.reflect</code>.
+          </p>
+        </div>
+        <div class="callout warn">
+          <p>
+            <strong>Status: shelved.</strong> This is a longer project that I stopped working on. I got bored
+            of it and moved on to the reinforcement-learning projects that make up the rest of this site. It
+            works end to end, but it has some known bugs, listed in <a href="#status">Known bugs and where it
+            stands</a>.
+          </p>
+        </div>
+      </section>
+
+      <section id="architecture" class="block" aria-labelledby="architecture-title">
+        <h2 id="architecture-title">Architecture</h2>
+        <p class="section-lede">
+          A React single-page app talks JSON to a Spring Boot service, and the service is a thin shell around
+          plain-Java algorithm classes.
+        </p>
+
+        <figure class="diagram">
+          <div class="diagram-scroll" tabindex="0" role="region" aria-label="Architecture diagram (scrollable)">
+            <svg viewBox="0 0 840 400" width="840" height="400" role="img" aria-labelledby="arch-title arch-desc">
+              <title id="arch-title">Browser, Spring Boot API and plain-Java algorithm core</title>
+              <desc id="arch-desc">
+                In the browser, ID3, neural network and genetic algorithm pages each exchange JSON over HTTP with
+                one Spring controller: TreeController, NetworkController and GAController. Each controller calls
+                a plain-Java core: ID3tree and Node, NeuralNetwork and NeuralNode, or AlgoTester and Island. The
+                cores read dataset text files. The browser pages share state through React contexts.
+              </desc>
+              <defs>
+                <marker id="arch-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M0 0L10 5L0 10z" class="dg-head" />
+                </marker>
+              </defs>
+
+              <rect class="dg-band" x="0" y="0" width="256" height="400" />
+              <text class="dg-tag" x="16" y="24">BROWSER &middot; REACT + VITE</text>
+              <text class="dg-tag" x="286" y="24">SPRING BOOT &middot; :8080</text>
+              <text class="dg-tag" x="540" y="24">PLAIN JAVA, NO SPRING</text>
+
+              <g class="dg-box"><rect x="24" y="56" width="208" height="54" /><text x="128" y="79" text-anchor="middle">ID3 pages</text><text class="dg-sub" x="128" y="97" text-anchor="middle">tree, node, datasets</text></g>
+              <g class="dg-box"><rect x="24" y="146" width="208" height="54" /><text x="128" y="169" text-anchor="middle">Neural network pages</text><text class="dg-sub" x="128" y="187" text-anchor="middle">results, graph, node info</text></g>
+              <g class="dg-box"><rect x="24" y="236" width="208" height="54" /><text x="128" y="259" text-anchor="middle">Genetic algorithm pages</text><text class="dg-sub" x="128" y="277" text-anchor="middle">islands, population, rules</text></g>
+              <g class="dg-box"><rect x="24" y="326" width="208" height="54" /><text x="128" y="349" text-anchor="middle">Shared state</text><text class="dg-sub" x="128" y="367" text-anchor="middle">React contexts</text></g>
+
+              <g class="dg-box"><rect x="286" y="56" width="190" height="54" /><text x="381" y="79" text-anchor="middle">TreeController</text><text class="dg-sub" x="381" y="97" text-anchor="middle">&rarr; TreeService</text></g>
+              <g class="dg-box"><rect x="286" y="146" width="190" height="54" /><text x="381" y="169" text-anchor="middle">NetworkController</text><text class="dg-sub" x="381" y="187" text-anchor="middle">/nn/*</text></g>
+              <g class="dg-box"><rect x="286" y="236" width="190" height="54" /><text x="381" y="259" text-anchor="middle">GAController</text><text class="dg-sub" x="381" y="277" text-anchor="middle">/ga/*</text></g>
+
+              <g class="dg-box dg-main"><rect x="540" y="56" width="256" height="54" /><text x="668" y="79" text-anchor="middle">ID3tree, Node</text><text class="dg-sub" x="668" y="97" text-anchor="middle">entropy, gain, rules</text></g>
+              <g class="dg-box dg-main"><rect x="540" y="146" width="256" height="54" /><text x="668" y="169" text-anchor="middle">NeuralNetwork, NeuralNode</text><text class="dg-sub" x="668" y="187" text-anchor="middle">feed-forward, backprop, momentum</text></g>
+              <g class="dg-box dg-main"><rect x="540" y="236" width="256" height="54" /><text x="668" y="259" text-anchor="middle">AlgoTester, Island</text><text class="dg-sub" x="668" y="277" text-anchor="middle">selection, crossover, mutation</text></g>
+
+              <g class="dg-box"><rect x="540" y="326" width="256" height="54" /><text x="668" y="349" text-anchor="middle">Dataset files</text><text class="dg-sub" x="668" y="367" text-anchor="middle">Tennis-*.txt, Iris*.txt</text></g>
+
+              <path class="dg-line" d="M232 83H286" marker-start="url(#arch-arrow)" marker-end="url(#arch-arrow)" />
+              <path class="dg-line" d="M232 173H286" marker-start="url(#arch-arrow)" marker-end="url(#arch-arrow)" />
+              <path class="dg-line" d="M232 263H286" marker-start="url(#arch-arrow)" marker-end="url(#arch-arrow)" />
+              <text class="dg-sub" x="259" y="74" text-anchor="middle">JSON</text>
+
+              <path class="dg-line" d="M476 83H540" marker-end="url(#arch-arrow)" />
+              <path class="dg-line" d="M476 173H540" marker-end="url(#arch-arrow)" />
+              <path class="dg-line" d="M476 263H540" marker-end="url(#arch-arrow)" />
+
+              <path class="dg-line dg-dash" d="M128 326V290" marker-end="url(#arch-arrow)" />
+              <path class="dg-line dg-dash" d="M796 353H820V83H796" marker-end="url(#arch-arrow)" />
+              <path class="dg-line dg-dash" d="M820 173H796" marker-end="url(#arch-arrow)" />
+              <path class="dg-line dg-dash" d="M820 263H796" marker-end="url(#arch-arrow)" />
+            </svg>
+          </div>
+          <figcaption>
+            Solid arrows are requests and calls. Dashed arrows are shared state in the browser and dataset reads in
+            the algorithms. HTTP and JSON stop at the controllers: the algorithm classes never import Spring.
+          </figcaption>
+        </figure>
+
+        <h3 class="sub">Design principles</h3>
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Thin web layer, plain-Java core</h3>
+            <p>Controllers parse a request DTO, call the algorithm and shape the response. The same classes still run from a <code>main</code> method: the original command-line harnesses are commented out in <code>Driver</code> and <code>AlgoTester</code>.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Train once, inspect many times</h3>
+            <p>The server keeps the latest trained model in memory, so after one training call the frontend can make any number of read-only calls to explore it without retraining.</p>
+          </li>
+          <li class="ghost" style="--c: var(--fg)">
+            <h3>DTOs at the boundary</h3>
+            <p>Request bodies bind to dedicated transfer objects, and the decision tree becomes a recursive JSON-friendly DTO. Parent pointers, <code>String[]</code> rows and <code>StringBuilder</code> rules never reach the client.</p>
+          </li>
+          <li class="ghost" style="--c: var(--muted-fg)">
+            <h3>Visualization is the product</h3>
+            <p>Each algorithm gets a results page, an About page, a dataset viewer and at least one canvas you can click into for detail.</p>
+          </li>
+        </ul>
+
+        <h3 class="sub">Tech stack</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Tech stack table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Layer</th><th scope="col">Technology</th><th scope="col">Role</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Frontend build</th><td>Vite (<code>@vitejs/plugin-react</code>)</td><td>Dev server on <code>:5173</code> with hot module replacement, and production bundling.</td></tr>
+              <tr><th scope="row">Frontend language</th><td>TypeScript ~5.8</td><td><code>strict</code> mode, <code>noUnusedLocals</code>, <code>noUnusedParameters</code>, <code>verbatimModuleSyntax</code>.</td></tr>
+              <tr><th scope="row">UI library</th><td>React ^19.1</td><td>Function components and hooks throughout.</td></tr>
+              <tr><th scope="row">Routing</th><td>react-router-dom ^7.8</td><td>Client-side routes, including a pathless layout route for scoped context.</td></tr>
+              <tr><th scope="row">Graphs</th><td>React Flow (<code>reactflow</code> ^11.11)</td><td>The decision-tree view, the neural-network topology view and the GA island archipelago.</td></tr>
+              <tr><th scope="row">Math typesetting</th><td>KaTeX and <code>react-katex</code></td><td>Labelled <code>\overbrace</code> annotations on the GA bit-string encoding.</td></tr>
+              <tr><th scope="row">Backend framework</th><td>Spring Boot 3.5.4 (<code>spring-boot-starter-web</code>)</td><td>REST controllers and Jackson JSON (de)serialization. Nothing else.</td></tr>
+              <tr><th scope="row">Backend language</th><td>Java 17</td><td>Algorithms use only the JDK, including the Java 17 <code>Random.nextInt(a, b)</code> and <code>nextDouble(a, b)</code>.</td></tr>
+              <tr><th scope="row">Build</th><td>Maven, wrapper included</td><td><code>mvnw spring-boot:run</code></td></tr>
+              <tr><th scope="row">Container</th><td>Docker, multi-stage</td><td><code>maven:3.9.5-eclipse-temurin-17</code> build stage, then an <code>openjdk:17-jdk-slim</code> runtime stage.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <details class="fold">
+          <summary>Repository layout (relevant source only)</summary>
+          <div>
+            <pre class="codeblock" tabindex="0"><code>FullStackApp/
+├── Backend/                                   Spring Boot service (Java 17)
+│   ├── pom.xml                                spring-boot-starter-web only
+│   ├── Dockerfile                             multi-stage Maven → JDK 17 slim
+│   ├── IrisTrain.txt / IrisTest.txt           NN data (read relative to working dir)
+│   ├── Tennis-Train.txt                       GA data (read relative to working dir)
+│   └── src/main/
+│       ├── resources/Tennis-{Train,Test,Set-2}.txt   ID3 data (read from classpath)
+│       └── java/com/example/demo/
+│           ├── CorsConfig.java                 global CORS for :5173
+│           ├── TreeController.java      (58)   ID3 REST endpoints
+│           ├── TreeService.java        (112)   ID3 service + DTO mapping + accuracy
+│           ├── ID3tree.java            (378)   ID3 algorithm
+│           ├── Node.java                (54)   decision-tree node
+│           ├── TreeUtils.java           (73)   file parsing, rule filtering
+│           ├── TreeNodeFullDTO.java     (29)   recursive tree DTO
+│           ├── TrainRequest.java / AccuracyRequest.java     request DTOs
+│           ├── NeuralNetwork/
+│           │   ├── NeuralNetwork.java  (323)   layers, feed-forward, backprop, momentum
+│           │   ├── NeuralNode.java     (100)   neuron with outgoing weights + momentum memory
+│           │   ├── ActivationFunction.java / SigmoidActivation.java
+│           │   ├── NetworkController.java (113) /nn endpoints
+│           │   ├── NetworkRequest.java  (51)   request DTO
+│           │   └── Driver.java         (167)   Iris parsing + accuracy/confusion report
+│           └── GeneticAlgorithm/
+│               ├── AlgoTester.java     (437)   island factory, generation driver, init population
+│               ├── Island.java         (121)   one population: select → crossover → mutate
+│               ├── Evaluator.java      (231)   bit-string encoding, rule matching, fitness
+│               ├── CandidateHyp.java    (27)   {int[] hypothesis, double fitness}
+│               ├── HypothesesUtilities.java (126) split / join / break-into-rules helpers
+│               ├── SelectionStrategy  → Fitness, FitnessProportional, Rank, Tournament
+│               ├── CrossoverStrategy  → SinglePoint, TwoPoint, ExtendedTwoPoint, VaryingRuleLength
+│               ├── MutationStrategy   → StandardMutation, GabilMutation
+│               ├── GAController.java    (76)   /ga endpoints
+│               └── GARequest.java / IslandConfig.java   request DTOs
+└── Frontend/                                  Vite + React + TypeScript
+    ├── public/Datasets/*.json                 JSON copies of datasets for the viewers
+    └── src/
+        ├── main.tsx                            router + context providers
+        ├── ML_Cards.tsx                        algorithm hub (card grid)
+        ├── ID3/            ResultsPage, TreePage, NodePage, DatasetsPage, …
+        ├── NeuralNetwork/  NN_Results_Page, NetworkGraph, NodeInfoPage, …
+        └── GeneticAlgorithm/ GA_Results_Page, ViewIslandsPage, IslandNode, …</code></pre>
+            <p class="note">Line counts are in parentheses. Each algorithm's frontend folder also holds its dataset page and an <code>AboutTheAlgorithm</code> page.</p>
+          </div>
+        </details>
+      </section>
+
+      <section id="backend" class="block" aria-labelledby="backend-title">
+        <h2 id="backend-title">The Spring Boot API layer</h2>
+
+        <h3 class="sub">Layering</h3>
+        <pre class="codeblock" tabindex="0"><code>HTTP (JSON)
+   |
+   v
+@RestController   binds a request DTO (Jackson), validates input, chooses the response shape
+   |
+   v
+@Service / static driver   owns the model lifecycle (train, hold, query)
+   |
+   v
+Plain-Java algorithm classes   ID3tree, NeuralNetwork, Island, strategies (no Spring imports)</code></pre>
+        <ul class="bullets">
+          <li><strong>ID3</strong> uses the full controller &rarr; service &rarr; domain pattern. <code>TreeController</code> is injected with <code>TreeService</code> via <code>@Autowired</code>. <code>TreeService</code> owns the trained <code>ID3tree</code>, computes accuracy, and maps the internal <code>Node</code> graph to <code>TreeNodeFullDTO</code>.</li>
+          <li><strong>Neural network</strong> and <strong>genetic algorithm</strong> controllers talk to static drivers (<code>NetworkController.network</code>, <code>AlgoTester</code>), so code that began as a command-line harness is reused directly by the web layer.</li>
+        </ul>
+
+        <h3 class="sub">Data transfer objects</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="DTO table">
+          <table class="data-table">
+            <thead><tr><th scope="col">DTO</th><th scope="col">Direction</th><th scope="col">Fields</th><th scope="col">Notes</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>TrainRequest</code></th><td>in</td><td><code>algorithm</code>, <code>measure</code>, <code>trainFile</code>, <code>testFile</code></td><td><code>measure</code> is <code>"infoGain"</code> or <code>"entropy"</code> and selects the attribute-selection method by reflection.</td></tr>
+              <tr><th scope="row"><code>AccuracyRequest</code></th><td>in</td><td><code>testFile</code></td><td>Has a no-argument constructor for Jackson.</td></tr>
+              <tr><th scope="row"><code>TreeNodeFullDTO</code></th><td>out</td><td><code>name</code>, <code>edgeLabel</code>, <code>remainingAttributes</code>, <code>examples</code>, <code>children</code></td><td><strong>Recursive.</strong> Built by <code>TreeService.buildFullDTO</code>, which turns each <code>String[]</code> example row into a <code>LinkedHashMap</code> keyed by <code>Outlook / Temperature / Humidity / Wind / Play</code>, keeping column order for the UI table.</td></tr>
+              <tr><th scope="row"><code>NetworkRequest</code></th><td>in</td><td><code>trainFile</code>, <code>testFile</code>, <code>learningRate</code>, <code>momentum</code>, <code>epocs</code>, <code>activationFunction</code>, <code>hiddenLayers</code>, <code>neuronsPerLayer</code></td><td>The network hyperparameters.</td></tr>
+              <tr><th scope="row"><code>GARequest</code></th><td>in</td><td><code>algorithm</code>, <code>trainFile</code>, <code>testFile</code>, <code>islands</code></td><td><strong>Nested DTO:</strong> one <code>IslandConfig</code> per island.</td></tr>
+              <tr><th scope="row"><code>IslandConfig</code></th><td>in (nested)</td><td><code>selectionRate</code>, <code>selectionStrategy</code>, <code>mutationRate</code>, <code>mutationStrategy</code>, <code>crossoverRate</code>, <code>crossoverStrategy</code>, <code>ruleLengthPenalty</code>, <code>gabilExtension</code>, <code>populationSize</code></td><td>Every island can be configured independently.</td></tr>
+              <tr><th scope="row"><code>CandidateHyp</code></th><td>out</td><td><code>hypothesis: int[]</code>, <code>fitness: double</code></td><td>The domain object is serialized directly, since it is already a flat value pair.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Endpoint catalogue</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Endpoint catalogue table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Method</th><th scope="col">Path</th><th scope="col">Request</th><th scope="col">Response</th><th scope="col">Purpose</th></tr></thead>
+            <tbody>
+              <tr><td>POST</td><td><code>/train</code></td><td><code>TrainRequest</code></td><td>&ndash;</td><td>Build an ID3 tree from <code>trainFile</code> with the chosen measure.</td></tr>
+              <tr><td>POST</td><td><code>/accuracy</code></td><td><code>AccuracyRequest</code></td><td><code>double</code> (percent)</td><td>Classify <code>testFile</code> with the learned rule set.</td></tr>
+              <tr><td>GET</td><td><code>/rules</code></td><td>&ndash;</td><td><code>List&lt;String&gt;</code></td><td>One IF&ndash;THEN rule per leaf.</td></tr>
+              <tr><td>GET</td><td><code>/tree</code></td><td>&ndash;</td><td><code>TreeNodeFullDTO</code></td><td>The full tree, with the examples and remaining attributes at every node.</td></tr>
+              <tr><td>POST</td><td><code>/nn/train</code></td><td><code>NetworkRequest</code></td><td>text</td><td>Build and train the network.</td></tr>
+              <tr><td>GET</td><td><code>/nn/accuracy?fileName=</code></td><td>query param</td><td>text report</td><td>Accuracy, a table of correct predictions and a misclassification table.</td></tr>
+              <tr><td>GET</td><td><code>/nn/inputNodeInfo?nodePosition=</code></td><td>query</td><td>text</td><td>Outgoing weights of one input node.</td></tr>
+              <tr><td>GET</td><td><code>/nn/hiddenNodeInfo?layer=&amp;layerPosition=</code></td><td>query</td><td>text</td><td>Outgoing weights of one hidden node.</td></tr>
+              <tr><td>GET</td><td><code>/nn/outputNodeInfo?nodePosition=</code></td><td>query</td><td>text</td><td>Output-node info. The UI handles output nodes itself.</td></tr>
+              <tr><td>POST</td><td><code>/ga/setupIslands</code></td><td><code>GARequest</code></td><td><code>"Islands Setup Complete"</code></td><td>Build N islands, each with its own random initial population and strategies.</td></tr>
+              <tr><td>POST</td><td><code>/ga/train</code></td><td>&ndash;</td><td>text</td><td><strong>Evolve one generation</strong> on every island and report each island's best hypothesis, fitness and training accuracy.</td></tr>
+              <tr><td>POST</td><td><code>/ga/getPopulation/{islandId}</code></td><td>path</td><td><code>CandidateHyp[]</code></td><td>The current population of <code>island-N</code>, sorted by fitness.</td></tr>
+              <tr><td>POST</td><td><code>/ga/getHypothesisStats?hypothesis=</code></td><td>repeated query param</td><td>text</td><td>Placeholder for per-hypothesis statistics. Returns <code>"Coming Soon"</code>.</td></tr>
+              <tr><td>GET</td><td><code>/hello</code></td><td>&ndash;</td><td><code>"hello world"</code></td><td>Health check.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Cross-cutting choices</h3>
+        <ul class="bullets">
+          <li><strong>CORS.</strong> <code>CorsConfig</code> (a <code>WebMvcConfigurer</code>) allows <code>http://localhost:5173</code>, the Vite dev origin, for all routes and methods. Controllers also carry <code>@CrossOrigin</code>.</li>
+          <li><strong>Console output as the HTTP response.</strong> <code>NetworkController.trainNetwork</code> and <code>GAController.runGA</code> temporarily swap <code>System.out</code> for a <code>PrintStream</code> over a <code>ByteArrayOutputStream</code>, run the algorithm, restore <code>System.out</code> and return the captured text. The algorithms keep printing as they did on the command line, and the browser shows that output in a results text area.</li>
+          <li><strong>Two ways of loading files.</strong> ID3 loads datasets from the <em>classpath</em> (<code>getClassLoader().getResourceAsStream</code>), so its data is packaged in the jar. The NN and GA load data with <code>Paths.get(fileName)</code> relative to the <em>working directory</em>, which is why <code>IrisTrain.txt</code>, <code>IrisTest.txt</code> and <code>Tennis-Train.txt</code> also sit in <code>Backend/</code>.</li>
+          <li><strong>Hand-written parsing.</strong> Every dataset is read with <code>java.util.Scanner</code> and <code>String.split(" ")</code>. There is no CSV library.</li>
+        </ul>
+      </section>
+
+      <section id="frontend" class="block" aria-labelledby="frontend-title">
+        <h2 id="frontend-title">The frontend: Vite, TypeScript, React, React Flow</h2>
+
+        <h3 class="sub">Why this stack</h3>
+        <ul class="bullets">
+          <li><strong>Vite</strong> starts the dev server almost instantly and has fast hot module replacement, which suits a UI that is redesigned often while the algorithms are being tuned.</li>
+          <li><strong>Strict TypeScript</strong> gives typed models for backend payloads. For example, <code>ID3/Types.ts</code> defines a recursive <code>TreeNode</code> type that mirrors <code>TreeNodeFullDTO</code>.</li>
+          <li><strong>React Flow</strong> draws all three visualizations. It handles panning, zooming, a minimap, edge rendering and custom node components, so the code only has to compute nodes, edges and positions.</li>
+        </ul>
+
+        <details class="fold">
+          <summary>Routing map</summary>
+          <div>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Routing map table">
+              <table class="data-table">
+                <thead><tr><th scope="col">Route</th><th scope="col">Component</th><th scope="col">Purpose</th></tr></thead>
+                <tbody>
+                  <tr><td><code>/</code></td><td><code>HomePage</code></td><td>Landing page.</td></tr>
+                  <tr><td><code>/ML_Cards</code></td><td><code>ML_Cards</code></td><td>Hub of algorithm cards with a hover lift (2-column grid, 1 column under 900px).</td></tr>
+                  <tr><td><code>/DecisionTreeLayout</code></td><td><code>ID3/ResultsPage</code></td><td>Train ID3, check accuracy and rules.</td></tr>
+                  <tr><td><code>/tree</code></td><td><code>ID3/TreePage</code></td><td>React Flow decision tree.</td></tr>
+                  <tr><td><code>/node/:id</code></td><td><code>ID3/NodePage</code></td><td>Drill-down for one tree node (deep-linkable).</td></tr>
+                  <tr><td><code>/datasets</code></td><td><code>ID3/DatasetsPage</code></td><td>Tennis dataset tables.</td></tr>
+                  <tr><td><code>/ID3_about_page</code></td><td><code>ID3/AboutTheAlgorithm</code></td><td>Theory page.</td></tr>
+                  <tr><td><code>/nn_results</code></td><td><code>NN_Results_Page</code></td><td>Hyperparameter form, train, accuracy report.</td></tr>
+                  <tr><td><code>/nn_graph</code></td><td><code>NetworkGraph</code></td><td>React Flow network topology.</td></tr>
+                  <tr><td><code>/node_info</code></td><td><code>NodeInfoPage</code></td><td>One neuron's outgoing weights.</td></tr>
+                  <tr><td><code>/iris_datasets</code></td><td><code>IrisDatasetsPage</code></td><td>Iris dataset tables.</td></tr>
+                  <tr><td><code>/network_about_page</code></td><td><code>NeuralNetwork/AboutTheAlgorithm</code></td><td>Theory page.</td></tr>
+                  <tr><td><code>/ga_results</code></td><td><code>GA_Results_Page</code></td><td>Island builder, setup, step-wise evolution.</td></tr>
+                  <tr><td><code>/genetic_islands</code></td><td><code>ViewIslandsPage</code></td><td>React Flow archipelago with migration edges.</td></tr>
+                  <tr><td><code>/island/:id</code></td><td><code>IslandDetailPage</code></td><td>Population of one island.</td></tr>
+                  <tr><td><code>/hypothesis_breakdown</code></td><td><code>HypothesisBreakdownPage</code></td><td>Rule-by-rule decoding of a bit-string hypothesis.</td></tr>
+                  <tr><td><code>/genetic_about_page</code></td><td><code>GeneticAlgorithm/AboutTheAlgorithm</code></td><td>Theory page.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+
+        <h3 class="sub">State management</h3>
+        <ul class="bullets">
+          <li><strong><code>IslandsContext</code></strong> wraps the whole app, above <code>BrowserRouter</code>. It holds the island configurations and the user-drawn migration edges, so an archipelago built on <code>/ga_results</code> is still there on <code>/genetic_islands</code> and <code>/island/:id</code>.</li>
+          <li><strong><code>NeuralNetworkContext</code></strong> is mounted through a <em>pathless layout route</em> (<code>&lt;Route element={&lt;NeuralNetworkProvider&gt;&lt;Outlet/&gt;&lt;/NeuralNetworkProvider&gt;}&gt;</code>). Its state is shared only by the five NN routes. Defaults: learning rate 0.05, momentum 0.8, 500 epochs, sigmoid, 1 hidden layer, 5 neurons per layer.</li>
+          <li><strong>ID3</strong> needs no context, because the server holds the tree and every ID3 page fetches what it needs.</li>
+          <li><strong>Router <code>location.state</code></strong> carries short-lived navigation payloads, such as the network shape passed to <code>/nn_graph</code> and the clicked node's id, layer and position passed to <code>/node_info</code>.</li>
+        </ul>
+
+        <h3 class="sub">The three React Flow visualizations</h3>
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Decision tree <span><code>TreePage.tsx</code></span></h3>
+            <p><code>buildFlowFromJson</code> walks the DTO in pre-order and gives each node a sequential id. Children are sorted by edge label so the layout is identical on every render. <code>dagre</code> is installed but unused: <code>centerTreeLayout</code> is a hand-written tidy tree that puts leaves in consecutive columns and centres each parent over its children.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Network topology <span><code>NetworkGraph.tsx</code></span></h3>
+            <p>Built from the hyperparameters you chose: four labelled input nodes, <code>hiddenLayers &times; neuronsPerLayer</code> hidden nodes drawn as a custom orange <code>&sigma;</code> node, and three output nodes. Edges are animated to suggest signal flow. Double-clicking a node parses its id into backend coordinates and opens its weights.</p>
+          </li>
+          <li class="ghost" style="--c: var(--fg)">
+            <h3>Island archipelago <span><code>ViewIslandsPage.tsx</code></span></h3>
+            <p>Each island is a custom node: a half-dome with a sand-to-ocean gradient and three palm trees. Drag between handles to draw migration edges, chosen as unidirectional (grey) or bidirectional (red, two opposite edges). Edges live in <code>IslandsContext</code>, so they survive navigation.</p>
+          </li>
+        </ul>
+
+        <h3 class="sub">Other frontend design choices</h3>
+        <ul class="bullets">
+          <li><strong>Deep-linkable drill-down.</strong> Clicking a tree node opens <code>/node/:id</code>. <code>NodePage</code> re-fetches <code>/tree</code> and repeats the same pre-order walk with the same child sort to find that node, so the URL alone rebuilds the view with no client state shared between pages.</li>
+          <li><strong>One layout for every results page.</strong> A control row of buttons, a form row and a large monospace text area for backend output. <code>ResultsPage.css</code> is shared across algorithms.</li>
+          <li><strong>Dataset viewers read static JSON.</strong> <code>public/Datasets/*.json</code> are JSON copies of the training and test files. <code>TrainingExamplesTable</code> loads several files in parallel with <code>Promise.all</code>, guards against setting state after unmount with a <code>cancelled</code> flag, keeps the JSON key order, and always puts <code>Play</code> last.</li>
+          <li><strong>KaTeX for bit strings.</strong> <code>HypothesisBreakdownPage</code> uses <code>\overbrace{101}^{\text{Outlook}}</code> to label which attribute each run of bits encodes.</li>
+          <li><strong>Theme.</strong> A dark slate and navy palette defined as CSS variables in <code>index.css</code> (<code>--bg #0f172a</code>, <code>--panel #111827</code>, <code>--accent #60a5fa</code>), with light cards on the hub page.</li>
+        </ul>
+      </section>
+
+      <section id="datasets" class="block" aria-labelledby="datasets-title">
+        <h2 id="datasets-title">Datasets</h2>
+
+        <h3 class="sub">PlayTennis <span class="aside">Mitchell, Table 3.2. Used by ID3 and the GA</span></h3>
+        <p class="section-lede">Four discrete attributes and a binary target. One example per line, space-separated, label last, e.g. <code>Sunny Hot High Weak No</code>.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="PlayTennis attributes table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Attribute</th><th scope="col">Values</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Outlook</th><td>Sunny, Overcast, Rain</td></tr>
+              <tr><th scope="row">Temperature</th><td>Hot, Mild, Cool</td></tr>
+              <tr><th scope="row">Humidity</th><td>High, Normal</td></tr>
+              <tr><th scope="row">Wind</th><td>Weak, Strong</td></tr>
+              <tr><th scope="row">Play (target)</th><td>Yes, No</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="PlayTennis files table" style="margin-top: 16px">
+          <table class="data-table">
+            <thead><tr><th scope="col">File</th><th scope="col">Rows</th><th scope="col">Use</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>Tennis-Train.txt</code></th><td>10</td><td>Default training set (6 Yes, 4 No).</td></tr>
+              <tr><th scope="row"><code>Tennis-Test.txt</code></th><td>4</td><td>Held-out test set.</td></tr>
+              <tr><th scope="row"><code>Tennis-Set-2.txt</code> (&ldquo;Extended&rdquo;)</th><td>14</td><td>Train and test combined: Mitchell's full 14-example table.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Iris <span class="aside">Fisher, UCI. Used by the neural network</span></h3>
+        <p class="section-lede">Four continuous features (sepal length, sepal width, petal length, petal width, in cm) and three classes.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Iris files table">
+          <table class="data-table">
+            <thead><tr><th scope="col">File</th><th scope="col">Rows</th><th scope="col">Setosa</th><th scope="col">Versicolor</th><th scope="col">Virginica</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>IrisTrain.txt</code></th><td>100</td><td>34</td><td>32</td><td>34</td></tr>
+              <tr><th scope="row"><code>IrisTest.txt</code></th><td>50</td><td>16</td><td>18</td><td>16</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          Label encoding in <code>Driver.processExamples</code>: <code>Iris-setosa &rarr; 0</code>,
+          <code>Iris-virginica &rarr; 1</code>, <code>Iris-versicolor &rarr; 2</code>. The class index selects which of
+          the three output neurons should be 1.
+        </p>
+      </section>
+
+      <!-- ============================== ID3 ============================== -->
+      <section id="id3" class="block" aria-labelledby="id3-title">
+        <p class="chapter">Algorithm 1 &middot; Mitchell, Ch. 3</p>
+        <h2 id="id3-title">ID3 decision tree</h2>
+        <p class="section-lede">
+          ID3 builds a decision tree top-down and greedily. At each node it picks the attribute that best
+          classifies the examples that reached it, using information gain, and it never backtracks.
+        </p>
+
+        <article class="playback wide">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="1256"
+            height="606"
+            poster="/mlviz/playback/id3.jpg"
+            style="--vw: 1120px"
+            aria-label="Screen recording of the ID3 pages: training a tree, reading the rules, exploring the tree graph and a node's examples, and viewing the datasets"
+          >
+            <source src="/mlviz/playback/id3.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>The ID3 pages in use</h3>
+            <p>
+              Train on the 10-example set and check the rules and accuracy, open the tree and click into a node,
+              then train on Mitchell's full 14-example table and watch the tree change. The clip is about a
+              minute and loops while it is on screen.
+            </p>
+          </div>
+        </article>
+
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Search strategy</h3>
+            <p>Greedy, top-down, hill-climbing through the space of trees. Each node commits to the highest-gain attribute among those still unused, and the choice is never revisited.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Inductive bias</h3>
+            <p>A preference for <strong>shorter trees</strong>, and for trees that put high-information-gain attributes near the root. The hypothesis space is complete (any function of the discrete attributes), so the bias comes from the search, not from a restricted space. This is Occam's razor.</p>
+          </li>
+        </ul>
+
+        <h3 class="sub">What the UI shows</h3>
+        <div class="screens">
+          <figure class="shot wide">
+            <img src="/mlviz/screens/id3_tree.png" width="1586" height="440" alt="A learned decision tree: Outlook at the root, Overcast leads to Yes, Rain splits on Wind, Sunny splits on Temperature" loading="lazy" />
+            <figcaption>The learned tree as a React Flow graph. Attribute tests are brown, &ldquo;Yes&rdquo; leaves are green, &ldquo;No&rdquo; leaves are red, and edges are labelled with the attribute value.</figcaption>
+          </figure>
+          <figure class="shot">
+            <img class="nat" src="/mlviz/screens/id3_remaining.png" width="267" height="145" alt="Remaining Attributes panel listing Temperature, Humidity and Wind" loading="lazy" />
+            <img src="/mlviz/screens/id3_leaf_examples.png" width="1846" height="205" alt="Training Examples at This Node table with two Overcast rows, both labelled Yes" loading="lazy" />
+            <figcaption>Clicking a node opens its own page. This is one node: the attributes still available below it, and the training examples that reached it. Here the node is the Overcast leaf, where both examples are &ldquo;Yes&rdquo;.</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub">Implementation</h3>
+        <p class="section-lede">Custom data structure: <code>Node</code></p>
+        <pre class="codeblock" tabindex="0"><code>public class Node {
+   String name;                          // attribute tested here, or class label if leaf
+   ArrayList&lt;String[]&gt; examples;         // training examples that reached this node
+   HashMap&lt;String, Node&gt; children;       // attribute value -&gt; subtree  (the branch label is the key)
+   Node parent;                          // back-pointer (used for the empty-subset base case)
+   String[] remainingAttributes;         // attributes still available below this node
+   private boolean leaf;
+   private StringBuilder rule;           // IF-THEN rule accumulated from root to this node
+}</code></pre>
+        <ul class="bullets">
+          <li><strong>Children keyed by attribute value.</strong> Classification and DTO conversion follow branches by value directly, and each map key becomes the edge label in the UI.</li>
+          <li><strong>Every node keeps its own example subset and remaining attributes.</strong> That is the data the node page shows, and why the visualizer can answer &ldquo;which examples ended up here, and what could still be tested?&rdquo;</li>
+          <li><strong>Each node stores its own rule as it is built.</strong> Children copy the parent's rule prefix and append their own condition, and a leaf appends <code>THEN &lt;label&gt;</code>, so the rule exists the moment the leaf is reached. <code>ID3tree.leafNodes</code> collects the leaves, so there is no second traversal.</li>
+          <li><strong>Parent pointer</strong>, needed only for Mitchell's &ldquo;no examples left&rdquo; case, which labels the leaf with the majority class of the parent.</li>
+        </ul>
+
+        <h3 class="sub">The recursion <code>ID3tree.java</code></h3>
+        <pre class="codeblock" tabindex="0"><code>findRoot(examples, attributes)
+  choose best attribute A (by selected measure)
+  root.name = A; root.rule = "IF A"
+  partition examples by value of A        -&gt; mapValues()
+  create one child per observed value     -&gt; setChildren()
+  for each child: rule += " = v "; ID3(child)        (depth-first)
+
+ID3(node)
+  base case 1: all examples share a label   -&gt; leaf(label)
+  base case 2: no attributes remain         -&gt; leaf(majority(node.examples))
+  base case 3: no examples                  -&gt; leaf(majority(parent.examples))
+  choose best attribute among node.remainingAttributes
+  map it back to its column in the original attribute array  -&gt; updatedIndex()
+  partition, create children with the reduced attribute list
+  for each child: rule += "^ A = v "; ID3(child)</code></pre>
+        <ul class="bullets">
+          <li><code>checkBaseCase</code> returns a code (<code>1</code> homogeneous, <code>2</code> no attributes, <code>3</code> empty, <code>-1</code> continue) that <code>ID3()</code> handles with a <code>switch</code>.</li>
+          <li><strong>Column re-indexing.</strong> Example rows are never copied or narrowed. Each node holds only a shrinking list of attribute <em>names</em>, and <code>updatedIndex()</code> translates a name back to its column in the original row, so example arrays are shared by reference across the whole tree.</li>
+        </ul>
+
+        <h3 class="sub">Attribute selection, chosen by reflection</h3>
+        <p class="section-lede">
+          The <code>measure</code> in the request picks the statistic at runtime, with no <code>switch</code> to update:
+        </p>
+        <pre class="codeblock" tabindex="0"><code>this.selectionMeasure = selectionMeasure + "Measure";   // "infoGain" -&gt; "infoGainMeasure"
+Method m1 = this.getClass().getDeclaredMethod(this.selectionMeasure,
+                                              ArrayList.class, String[].class, Node.class);
+return (int) m1.invoke(this, examples, attributes, node);</code></pre>
+        <p class="note" style="margin-top: 0">
+          This is a lightweight strategy pattern by naming convention. A new criterion such as gain ratio only needs a
+          method called <code>gainRatioMeasure(...)</code> and a new dropdown option.
+        </p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Attribute selection measures table" style="margin-top: 16px">
+          <table class="data-table files">
+            <thead><tr><th scope="col">Measure</th><th scope="col">Chooses the attribute with</th><th scope="col">Formula</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>infoGain</code> (default)</th><td>The <strong>maximum</strong> gain.</td><td><code>Gain(S,A) = Entropy(S) &minus; &Sigma;<sub>v</sub> (|S<sub>v</sub>|/|S|)&middot;Entropy(S<sub>v</sub>)</code></td></tr>
+              <tr><th scope="row"><code>entropy</code></th><td>The <strong>minimum</strong> weighted child entropy.</td><td><code>&Sigma;<sub>v</sub> (|S<sub>v</sub>|/|S|)&middot;Entropy(S<sub>v</sub>)</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          <code>Entropy(S) = &minus;&Sigma; p<sub>i</sub> log<sub>2</sub> p<sub>i</sub></code> is implemented in
+          <code>entropyHelper</code>, with a hand-written <code>logBase2(x) = ln x / ln 2</code> that returns 0 for
+          <code>x = 0</code> so the <code>0&middot;log 0</code> term is defined. On the 10-example training set
+          (6 Yes, 4 No) the starting entropy is about 0.971. Because <code>Entropy(S)</code> is the same for every
+          candidate attribute at a node, the two measures always choose the same attribute. The toggle is there for
+          teaching, since it shows both views of the same quantity.
+        </p>
+
+        <h3 class="sub">From tree to rules, and rule-based classification</h3>
+        <p class="section-lede">
+          Mitchell &sect;3.7 recommends turning a tree into one IF&ndash;THEN rule per root-to-leaf path, which is
+          easier to read and is the first step of rule post-pruning. That conversion is how this implementation
+          classifies.
+        </p>
+        <ol class="steps">
+          <li><strong>Rule extraction.</strong> <code>/rules</code> returns each leaf's rule, e.g. <code>IF Outlook = Sunny ^ Humidity = High THEN No</code>.</li>
+          <li><strong>Literal filtering</strong> (<code>TreeUtils.processRules</code>). Every token that is not an attribute value or class label seen in training is removed, leaving a compact precondition list such as <code>Sunny High No</code>.</li>
+          <li><strong>Classification</strong> (<code>TreeService.calculateAccuracy</code>). The rules form a decision list. For each test example, the first rule whose preconditions all appear in the example classifies it, and the prediction is correct if the rule's last token equals the label.</li>
+        </ol>
+        <p class="note">
+          <strong>Rule post-pruning is not implemented.</strong> The About page explains it as a C4.5 extension: grow
+          the tree fully, convert it to rules, drop preconditions that don't improve estimated accuracy, then sort the
+          rules by accuracy. The backend builds the rule set that step would work on and already classifies with
+          ordered rules, but it does not remove preconditions by validation accuracy. The filtering above only
+          removes syntax tokens.
+        </p>
+
+        <h3 class="sub">Parameters</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="ID3 parameters table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Parameter</th><th scope="col">Value or options</th><th scope="col">Where</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Selection measure</th><td><code>infoGain</code> (default), <code>entropy</code></td><td><code>ResultsPage</code> dropdown &rarr; <code>TrainRequest.measure</code></td></tr>
+              <tr><th scope="row">Training file</th><td><code>Tennis-Train.txt</code> (default), <code>Tennis-Set-2.txt</code>, <code>Tennis-Test.txt</code></td><td>Dropdown</td></tr>
+              <tr><th scope="row">Test file</th><td><code>Tennis-Test.txt</code> (default), any of the above</td><td>Dropdown</td></tr>
+              <tr><th scope="row">Attribute names</th><td><code>{Outlook, Temperature, Humidity, Wind}</code>, target column <code>Play</code></td><td><code>TreeService.attrs</code></td></tr>
+              <tr><th scope="row">Stopping</th><td>Pure node, no attributes left, or empty subset</td><td><code>checkBaseCase</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">User flow</h3>
+        <ol class="steps">
+          <li>On <code>/DecisionTreeLayout</code>, choose a measure and files, then click <strong>Send Train POST</strong> (<code>POST /train</code>).</li>
+          <li><strong>Check Results</strong> calls <code>POST /accuracy</code> and <code>GET /rules</code> in parallel (<code>Promise.all</code>) and shows both.</li>
+          <li><strong>View Hypothesis</strong> opens <code>/tree</code>, the React Flow tree.</li>
+          <li>Clicking any node opens <code>/node/:id</code> with that node's remaining attributes and example subset.</li>
+          <li><strong>View Datasets</strong> and <strong>About the Algorithm</strong> open the supporting pages.</li>
+        </ol>
+      </section>
+
+      <!-- ============================== NN ============================== -->
+      <section id="nn" class="block" aria-labelledby="nn-title">
+        <p class="chapter">Algorithm 2 &middot; Mitchell, Ch. 4</p>
+        <h2 id="nn-title">Neural network with backpropagation</h2>
+        <p class="section-lede">
+          A fully connected feed-forward network of sigmoid units, trained one example at a time by gradient descent
+          on squared error with a momentum term (Mitchell &sect;4.5, Table 4.2). Forward propagation,
+          backpropagation, weight updates and activations are all custom code, with no TensorFlow or PyTorch.
+        </p>
+
+        <article class="playback wide">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="1256"
+            height="606"
+            poster="/mlviz/playback/nn.jpg"
+            style="--vw: 1120px"
+            aria-label="Screen recording of the neural network pages: training on Iris with different numbers of hidden layers, reading the accuracy reports, viewing the network graph and a node's weights"
+          >
+            <source src="/mlviz/playback/nn.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>The network pages in use</h3>
+            <p>
+              Train on Iris, read the accuracy report, change the number of hidden layers and train again, open the
+              network graph, then double-click a neuron to see its learned weights.
+            </p>
+          </div>
+        </article>
+
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Search strategy</h3>
+            <p>Stochastic gradient descent through weight space. The weights are updated after every training example, and momentum keeps the search moving in a consistent direction through small local minima and flat regions. It can still settle in a local minimum.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Inductive bias</h3>
+            <p>Mitchell's characterization is <strong>smooth interpolation</strong>: the network tends to label a new point like the training points around it. The hypothesis space is very expressive, so what you get is decided by the search, the starting weights (small, random) and when training stops.</p>
+          </li>
+        </ul>
+
+        <h3 class="sub">What the UI shows</h3>
+        <div class="screens">
+          <figure class="shot wide">
+            <img src="/mlviz/screens/nn_graph.png" width="1317" height="516" alt="Network graph: four green input nodes, four columns of five orange sigma hidden nodes, and three blue output nodes labelled Setosa, Virginica and Versicolor, joined by dashed animated edges" loading="lazy" />
+            <figcaption>The topology as a React Flow graph, drawn from the settings you trained with: four input nodes, a grid of hidden <code>&sigma;</code> nodes (4 layers of 5 here) and three output nodes.</figcaption>
+          </figure>
+        </div>
+        <div class="prose">
+            <p>
+              Output neurons have no outgoing edges, so the page handles them without a request and shows their
+              classification label (<code>Classification: Setosa</code>, and so on).
+            </p>
+        </div>
+
+        <div class="split pair">
+          <div class="pair-left">
+            <figure class="shot">
+            <img src="/mlviz/screens/nn_node.png" width="397" height="811" alt="Node Information page for hidden node hidden1-2, listing five connections to the next layer with their weights" loading="lazy" />
+            <figcaption>Double-click a neuron to open its weights.</figcaption>
+          </figure>
+            <div class="prose">
+              <p>
+              The node page lists the neuron's outgoing connections and the weight on each one. Weights are stored on
+              the <em>sending</em> neuron, so this view needs no extra bookkeeping: <code>getNodeInfo(node)</code> just
+              pairs <code>children[i].name</code> with <code>weights[i]</code>.
+            </p>
+            </div>
+          </div>
+          <figure class="surface">
+              <svg class="sf-svg" viewBox="0 0 520 579" role="img" aria-labelledby="sf-title sf-desc" focusable="false"><title id="sf-title">Error surface of a linear unit with two weights</title><desc id="sf-desc">A bowl-shaped wireframe surface. The floor axes are the weights w0 and w1 and the height is the error E of w. A path of dots starts high on one side and steps down to the lowest point at the bottom of the bowl, and an arrow on the floor shows the negative gradient at the start.</desc><path class="sf-floor" d="M230.6 524.3 L499.5 435.5 L289.4 321.8 L20.5 410.6 Z"/><path class="sf-q h5" d="M285.7 125.2 L302.5 87.1 L289.4 51.2 L272.6 90.1 Z"/><path class="sf-q h5" d="M268.9 159.7 L285.7 125.2 L272.6 90.1 L255.8 125.4 Z"/><path class="sf-q h5" d="M298.9 157.5 L315.7 120.2 L302.5 87.1 L285.7 125.2 Z"/><path class="sf-q h5" d="M252.1 190.7 L268.9 159.7 L255.8 125.4 L239.0 157.3 Z"/><path class="sf-q h5" d="M282.1 191.2 L298.9 157.5 L285.7 125.2 L268.9 159.7 Z"/><path class="sf-q h5" d="M312.0 187.1 L328.8 150.7 L315.7 120.2 L298.9 157.5 Z"/><path class="sf-q h4" d="M235.3 218.3 L252.1 190.7 L239.0 157.3 L222.2 185.6 Z"/><path class="sf-q h4" d="M265.2 221.5 L282.1 191.2 L268.9 159.7 L252.1 190.7 Z"/><path class="sf-q h4" d="M295.2 220.0 L312.0 187.1 L298.9 157.5 L282.1 191.2 Z"/><path class="sf-q h4" d="M325.1 214.0 L341.9 178.3 L328.8 150.7 L312.0 187.1 Z"/><path class="sf-q h3" d="M218.5 242.3 L235.3 218.3 L222.2 185.6 L205.4 210.4 Z"/><path class="sf-q h3" d="M248.4 248.2 L265.2 221.5 L252.1 190.7 L235.3 218.3 Z"/><path class="sf-q h3" d="M278.4 249.5 L295.2 220.0 L282.1 191.2 L265.2 221.5 Z"/><path class="sf-q h3" d="M308.3 246.1 L325.1 214.0 L312.0 187.1 L295.2 220.0 Z"/><path class="sf-q h3" d="M201.7 262.8 L218.5 242.3 L205.4 210.4 L188.6 231.7 Z"/><path class="sf-q h4" d="M338.3 238.1 L355.1 203.2 L341.9 178.3 L325.1 214.0 Z"/><path class="sf-q h3" d="M231.6 271.4 L248.4 248.2 L235.3 218.3 L218.5 242.3 Z"/><path class="sf-q h3" d="M261.6 275.4 L278.4 249.5 L265.2 221.5 L248.4 248.2 Z"/><path class="sf-q h3" d="M291.5 274.7 L308.3 246.1 L295.2 220.0 L278.4 249.5 Z"/><path class="sf-q h2" d="M184.9 279.7 L201.7 262.8 L188.6 231.7 L171.8 249.5 Z"/><path class="sf-q h3" d="M321.5 269.4 L338.3 238.1 L325.1 214.0 L308.3 246.1 Z"/><path class="sf-q h2" d="M214.8 291.1 L231.6 271.4 L218.5 242.3 L201.7 262.8 Z"/><path class="sf-q h3" d="M351.4 259.4 L368.2 225.4 L355.1 203.2 L338.3 238.1 Z"/><path class="sf-q h2" d="M244.8 297.8 L261.6 275.4 L248.4 248.2 L231.6 271.4 Z"/><path class="sf-q h2" d="M274.7 299.8 L291.5 274.7 L278.4 249.5 L261.6 275.4 Z"/><path class="sf-q h2" d="M168.1 293.2 L184.9 279.7 L171.8 249.5 L154.9 263.7 Z"/><path class="sf-q h2" d="M304.6 297.2 L321.5 269.4 L308.3 246.1 L291.5 274.7 Z"/><path class="sf-q h2" d="M198.0 307.3 L214.8 291.1 L201.7 262.8 L184.9 279.7 Z"/><path class="sf-q h2" d="M334.6 290.0 L351.4 259.4 L338.3 238.1 L321.5 269.4 Z"/><path class="sf-q h2" d="M228.0 316.7 L244.8 297.8 L231.6 271.4 L214.8 291.1 Z"/><path class="sf-q h3" d="M364.5 278.1 L381.3 244.8 L368.2 225.4 L351.4 259.4 Z"/><path class="sf-q h2" d="M257.9 321.4 L274.7 299.8 L261.6 275.4 L244.8 297.8 Z"/><path class="sf-q h2" d="M151.3 303.1 L168.1 293.2 L154.9 263.7 L138.1 274.5 Z"/><path class="sf-q h2" d="M287.8 321.5 L304.6 297.2 L291.5 274.7 L274.7 299.8 Z"/><path class="sf-q h2" d="M181.2 319.9 L198.0 307.3 L184.9 279.7 L168.1 293.2 Z"/><path class="sf-q h2" d="M317.8 317.0 L334.6 290.0 L321.5 269.4 L304.6 297.2 Z"/><path class="sf-q h1" d="M211.1 332.0 L228.0 316.7 L214.8 291.1 L198.0 307.3 Z"/><path class="sf-q h2" d="M347.7 307.8 L364.5 278.1 L351.4 259.4 L334.6 290.0 Z"/><path class="sf-q h1" d="M241.1 339.5 L257.9 321.4 L244.8 297.8 L228.0 316.7 Z"/><path class="sf-q h3" d="M377.7 293.9 L394.5 261.5 L381.3 244.8 L364.5 278.1 Z"/><path class="sf-q h2" d="M134.5 309.6 L151.3 303.1 L138.1 274.5 L121.3 281.7 Z"/><path class="sf-q h1" d="M271.0 342.3 L287.8 321.5 L274.7 299.8 L257.9 321.4 Z"/><path class="sf-q h1" d="M164.4 329.0 L181.2 319.9 L168.1 293.2 L151.3 303.1 Z"/><path class="sf-q h1" d="M301.0 340.5 L317.8 317.0 L304.6 297.2 L287.8 321.5 Z"/><path class="sf-q h1" d="M194.3 343.9 L211.1 332.0 L198.0 307.3 L181.2 319.9 Z"/><path class="sf-q h1" d="M330.9 334.0 L347.7 307.8 L334.6 290.0 L317.8 317.0 Z"/><path class="sf-q h1" d="M224.3 354.0 L241.1 339.5 L228.0 316.7 L211.1 332.0 Z"/><path class="sf-q h2" d="M360.8 322.8 L377.7 293.9 L364.5 278.1 L347.7 307.8 Z"/><path class="sf-q h2" d="M117.7 312.5 L134.5 309.6 L121.3 281.7 L104.5 285.5 Z"/><path class="sf-q h1" d="M254.2 359.6 L271.0 342.3 L257.9 321.4 L241.1 339.5 Z"/><path class="sf-q h2" d="M390.8 307.1 L407.6 275.4 L394.5 261.5 L377.7 293.9 Z"/><path class="sf-q h1" d="M147.6 334.7 L164.4 329.0 L151.3 303.1 L134.5 309.6 Z"/><path class="sf-q h1" d="M284.2 360.4 L301.0 340.5 L287.8 321.5 L271.0 342.3 Z"/><path class="sf-q h1" d="M177.5 352.2 L194.3 343.9 L181.2 319.9 L164.4 329.0 Z"/><path class="sf-q h1" d="M314.1 356.7 L330.9 334.0 L317.8 317.0 L301.0 340.5 Z"/><path class="sf-q h1" d="M207.5 365.1 L224.3 354.0 L211.1 332.0 L194.3 343.9 Z"/><path class="sf-q h1" d="M344.0 348.2 L360.8 322.8 L347.7 307.8 L330.9 334.0 Z"/><path class="sf-q h2" d="M100.8 311.9 L117.7 312.5 L104.5 285.5 L87.7 285.7 Z"/><path class="sf-q h0" d="M237.4 373.3 L254.2 359.6 L241.1 339.5 L224.3 354.0 Z"/><path class="sf-q h2" d="M374.0 335.2 L390.8 307.1 L377.7 293.9 L360.8 322.8 Z"/><path class="sf-q h1" d="M130.8 336.8 L147.6 334.7 L134.5 309.6 L117.7 312.5 Z"/><path class="sf-q h0" d="M267.4 376.9 L284.2 360.4 L271.0 342.3 L254.2 359.6 Z"/><path class="sf-q h2" d="M403.9 317.4 L420.7 286.6 L407.6 275.4 L390.8 307.1 Z"/><path class="sf-q h1" d="M160.7 357.0 L177.5 352.2 L164.4 329.0 L147.6 334.7 Z"/><path class="sf-q h0" d="M297.3 375.8 L314.1 356.7 L301.0 340.5 L284.2 360.4 Z"/><path class="sf-q h0" d="M190.7 372.6 L207.5 365.1 L194.3 343.9 L177.5 352.2 Z"/><path class="sf-q h1" d="M327.2 370.1 L344.0 348.2 L330.9 334.0 L314.1 356.7 Z"/><path class="sf-q h2" d="M84.0 307.8 L100.8 311.9 L87.7 285.7 L70.9 282.4 Z"/><path class="sf-q h0" d="M220.6 383.6 L237.4 373.3 L224.3 354.0 L207.5 365.1 Z"/><path class="sf-q h1" d="M357.2 359.8 L374.0 335.2 L360.8 322.8 L344.0 348.2 Z"/><path class="sf-q h2" d="M114.0 335.4 L130.8 336.8 L117.7 312.5 L100.8 311.9 Z"/><path class="sf-q h0" d="M250.5 389.9 L267.4 376.9 L254.2 359.6 L237.4 373.3 Z"/><path class="sf-q h1" d="M387.1 344.7 L403.9 317.4 L390.8 307.1 L374.0 335.2 Z"/><path class="sf-q h1" d="M143.9 358.3 L160.7 357.0 L147.6 334.7 L130.8 336.8 Z"/><path class="sf-q h0" d="M280.5 391.5 L297.3 375.8 L284.2 360.4 L267.4 376.9 Z"/><path class="sf-q h2" d="M417.1 325.1 L433.9 295.1 L420.7 286.6 L403.9 317.4 Z"/><path class="sf-q h0" d="M173.9 376.6 L190.7 372.6 L177.5 352.2 L160.7 357.0 Z"/><path class="sf-q h0" d="M310.4 388.5 L327.2 370.1 L314.1 356.7 L297.3 375.8 Z"/><path class="sf-q h3" d="M67.2 300.2 L84.0 307.8 L70.9 282.4 L54.1 275.5 Z"/><path class="sf-q h0" d="M203.8 390.3 L220.6 383.6 L207.5 365.1 L190.7 372.6 Z"/><path class="sf-q h1" d="M340.4 380.8 L357.2 359.8 L344.0 348.2 L327.2 370.1 Z"/><path class="sf-q h2" d="M97.2 330.5 L114.0 335.4 L100.8 311.9 L84.0 307.8 Z"/><path class="sf-q h0" d="M233.7 399.3 L250.5 389.9 L237.4 373.3 L220.6 383.6 Z"/><path class="sf-q h1" d="M370.3 368.5 L387.1 344.7 L374.0 335.2 L357.2 359.8 Z"/><path class="sf-q h1" d="M127.1 356.1 L143.9 358.3 L130.8 336.8 L114.0 335.4 Z"/><path class="sf-q h0" d="M263.7 403.6 L280.5 391.5 L267.4 376.9 L250.5 389.9 Z"/><path class="sf-q h1" d="M400.2 351.6 L417.1 325.1 L403.9 317.4 L387.1 344.7 Z"/><path class="sf-q h1" d="M157.0 377.1 L173.9 376.6 L160.7 357.0 L143.9 358.3 Z"/><path class="sf-q h0" d="M293.6 403.3 L310.4 388.5 L297.3 375.8 L280.5 391.5 Z"/><path class="sf-q h3" d="M50.4 289.0 L67.2 300.2 L54.1 275.5 L37.3 265.2 Z"/><path class="sf-q h2" d="M430.2 330.0 L447.0 300.8 L433.9 295.1 L417.1 325.1 Z"/><path class="sf-q h0" d="M187.0 393.5 L203.8 390.3 L190.7 372.6 L173.9 376.6 Z"/><path class="sf-q h0" d="M323.6 398.4 L340.4 380.8 L327.2 370.1 L310.4 388.5 Z"/><path class="sf-q h2" d="M80.4 322.0 L97.2 330.5 L84.0 307.8 L67.2 300.2 Z"/><path class="sf-q h0" d="M216.9 405.2 L233.7 399.3 L220.6 383.6 L203.8 390.3 Z"/><path class="sf-q h0" d="M353.5 388.8 L370.3 368.5 L357.2 359.8 L340.4 380.8 Z"/><path class="sf-q h1" d="M110.3 350.4 L127.1 356.1 L114.0 335.4 L97.2 330.5 Z"/><path class="sf-q h0" d="M246.9 412.3 L263.7 403.6 L250.5 389.9 L233.7 399.3 Z"/><path class="sf-q h1" d="M383.4 374.5 L400.2 351.6 L387.1 344.7 L370.3 368.5 Z"/><path class="sf-q h1" d="M140.2 374.1 L157.0 377.1 L143.9 358.3 L127.1 356.1 Z"/><path class="sf-q h0" d="M276.8 414.7 L293.6 403.3 L280.5 391.5 L263.7 403.6 Z"/><path class="sf-q h3" d="M33.6 274.4 L50.4 289.0 L37.3 265.2 L20.5 251.3 Z"/><path class="sf-q h1" d="M413.4 355.6 L430.2 330.0 L417.1 325.1 L400.2 351.6 Z"/><path class="sf-q h0" d="M170.2 393.2 L187.0 393.5 L173.9 376.6 L157.0 377.1 Z"/><path class="sf-q h0" d="M306.7 412.4 L323.6 398.4 L310.4 388.5 L293.6 403.3 Z"/><path class="sf-q h2" d="M63.5 310.1 L80.4 322.0 L67.2 300.2 L50.4 289.0 Z"/><path class="sf-q h2" d="M443.3 332.1 L460.1 303.7 L447.0 300.8 L430.2 330.0 Z"/><path class="sf-q h0" d="M200.1 407.6 L216.9 405.2 L203.8 390.3 L187.0 393.5 Z"/><path class="sf-q h0" d="M336.7 405.5 L353.5 388.8 L340.4 380.8 L323.6 398.4 Z"/><path class="sf-q h2" d="M93.5 341.2 L110.3 350.4 L97.2 330.5 L80.4 322.0 Z"/><path class="sf-q h0" d="M230.1 417.4 L246.9 412.3 L233.7 399.3 L216.9 405.2 Z"/><path class="sf-q h0" d="M366.6 394.0 L383.4 374.5 L370.3 368.5 L353.5 388.8 Z"/><path class="sf-q h1" d="M123.4 367.6 L140.2 374.1 L127.1 356.1 L110.3 350.4 Z"/><path class="sf-q h0" d="M260.0 422.5 L276.8 414.7 L263.7 403.6 L246.9 412.3 Z"/><path class="sf-q h1" d="M396.6 377.8 L413.4 355.6 L400.2 351.6 L383.4 374.5 Z"/><path class="sf-q h0" d="M153.4 389.4 L170.2 393.2 L157.0 377.1 L140.2 374.1 Z"/><path class="sf-q h0" d="M289.9 423.0 L306.7 412.4 L293.6 403.3 L276.8 414.7 Z"/><path class="sf-q h3" d="M46.7 294.6 L63.5 310.1 L50.4 289.0 L33.6 274.4 Z"/><path class="sf-q h2" d="M426.5 357.0 L443.3 332.1 L430.2 330.0 L413.4 355.6 Z"/><path class="sf-q h0" d="M183.3 406.5 L200.1 407.6 L187.0 393.5 L170.2 393.2 Z"/><path class="sf-q h0" d="M319.9 418.8 L336.7 405.5 L323.6 398.4 L306.7 412.4 Z"/><path class="sf-q h2" d="M76.7 328.4 L93.5 341.2 L80.4 322.0 L63.5 310.1 Z"/><path class="sf-q h2" d="M456.5 331.5 L473.3 303.9 L460.1 303.7 L443.3 332.1 Z"/><path class="sf-q h0" d="M213.3 419.0 L230.1 417.4 L216.9 405.2 L200.1 407.6 Z"/><path class="sf-q h0" d="M349.8 410.0 L366.6 394.0 L353.5 388.8 L336.7 405.5 Z"/><path class="sf-q h1" d="M106.6 357.5 L123.4 367.6 L110.3 350.4 L93.5 341.2 Z"/><path class="sf-q h0" d="M243.2 426.8 L260.0 422.5 L246.9 412.3 L230.1 417.4 Z"/><path class="sf-q h1" d="M379.8 396.5 L396.6 377.8 L383.4 374.5 L366.6 394.0 Z"/><path class="sf-q h1" d="M136.6 382.0 L153.4 389.4 L140.2 374.1 L123.4 367.6 Z"/><path class="sf-q h0" d="M273.1 430.0 L289.9 423.0 L276.8 414.7 L260.0 422.5 Z"/><path class="sf-q h1" d="M409.7 378.4 L426.5 357.0 L413.4 355.6 L396.6 377.8 Z"/><path class="sf-q h0" d="M166.5 401.9 L183.3 406.5 L170.2 393.2 L153.4 389.4 Z"/><path class="sf-q h0" d="M303.1 428.5 L319.9 418.8 L306.7 412.4 L289.9 423.0 Z"/><path class="sf-q h3" d="M59.9 312.1 L76.7 328.4 L63.5 310.1 L46.7 294.6 Z"/><path class="sf-q h2" d="M439.6 355.6 L456.5 331.5 L443.3 332.1 L426.5 357.0 Z"/><path class="sf-q h0" d="M196.4 417.1 L213.3 419.0 L200.1 407.6 L183.3 406.5 Z"/><path class="sf-q h0" d="M333.0 422.4 L349.8 410.0 L336.7 405.5 L319.9 418.8 Z"/><path class="sf-q h2" d="M89.8 344.0 L106.6 357.5 L93.5 341.2 L76.7 328.4 Z"/><path class="sf-q h3" d="M469.6 328.1 L486.4 301.4 L473.3 303.9 L456.5 331.5 Z"/><path class="sf-q h0" d="M226.4 427.6 L243.2 426.8 L230.1 417.4 L213.3 419.0 Z"/><path class="sf-q h0" d="M363.0 411.6 L379.8 396.5 L366.6 394.0 L349.8 410.0 Z"/><path class="sf-q h1" d="M119.8 371.2 L136.6 382.0 L123.4 367.6 L106.6 357.5 Z"/><path class="sf-q h0" d="M256.3 433.5 L273.1 430.0 L260.0 422.5 L243.2 426.8 Z"/><path class="sf-q h1" d="M392.9 396.2 L409.7 378.4 L396.6 377.8 L379.8 396.5 Z"/><path class="sf-q h1" d="M149.7 393.7 L166.5 401.9 L153.4 389.4 L136.6 382.0 Z"/><path class="sf-q h0" d="M286.3 434.7 L303.1 428.5 L289.9 423.0 L273.1 430.0 Z"/><path class="sf-q h1" d="M422.8 376.1 L439.6 355.6 L426.5 357.0 L409.7 378.4 Z"/><path class="sf-q h0" d="M179.6 411.6 L196.4 417.1 L183.3 406.5 L166.5 401.9 Z"/><path class="sf-q h0" d="M316.2 431.3 L333.0 422.4 L319.9 418.8 L303.1 428.5 Z"/><path class="sf-q h2" d="M73.0 326.9 L89.8 344.0 L76.7 328.4 L59.9 312.1 Z"/><path class="sf-q h2" d="M452.8 351.4 L469.6 328.1 L456.5 331.5 L439.6 355.6 Z"/><path class="sf-q h0" d="M209.6 424.9 L226.4 427.6 L213.3 419.0 L196.4 417.1 Z"/><path class="sf-q h0" d="M346.1 423.3 L363.0 411.6 L349.8 410.0 L333.0 422.4 Z"/><path class="sf-q h2" d="M102.9 356.8 L119.8 371.2 L106.6 357.5 L89.8 344.0 Z"/><path class="sf-q h3" d="M482.7 322.1 L499.5 296.1 L486.4 301.4 L469.6 328.1 Z"/><path class="sf-q h0" d="M239.5 433.5 L256.3 433.5 L243.2 426.8 L226.4 427.6 Z"/><path class="sf-q h0" d="M376.1 410.5 L392.9 396.2 L379.8 396.5 L363.0 411.6 Z"/><path class="sf-q h1" d="M132.9 382.1 L149.7 393.7 L136.6 382.0 L119.8 371.2 Z"/><path class="sf-q h0" d="M269.5 437.4 L286.3 434.7 L273.1 430.0 L256.3 433.5 Z"/><path class="sf-q h1" d="M406.0 393.2 L422.8 376.1 L409.7 378.4 L392.9 396.2 Z"/><path class="sf-q h0" d="M162.8 402.7 L179.6 411.6 L166.5 401.9 L149.7 393.7 Z"/><path class="sf-q h0" d="M299.4 436.7 L316.2 431.3 L303.1 428.5 L286.3 434.7 Z"/><path class="sf-q h2" d="M436.0 371.2 L452.8 351.4 L439.6 355.6 L422.8 376.1 Z"/><path class="sf-q h0" d="M192.8 418.6 L209.6 424.9 L196.4 417.1 L179.6 411.6 Z"/><path class="sf-q h0" d="M329.3 431.4 L346.1 423.3 L333.0 422.4 L316.2 431.3 Z"/><path class="sf-q h2" d="M86.1 338.9 L102.9 356.8 L89.8 344.0 L73.0 326.9 Z"/><path class="sf-q h2" d="M465.9 344.5 L482.7 322.1 L469.6 328.1 L452.8 351.4 Z"/><path class="sf-q h0" d="M222.7 429.9 L239.5 433.5 L226.4 427.6 L209.6 424.9 Z"/><path class="sf-q h0" d="M359.3 421.4 L376.1 410.5 L363.0 411.6 L346.1 423.3 Z"/><path class="sf-q h1" d="M116.1 366.9 L132.9 382.1 L119.8 371.2 L102.9 356.8 Z"/><path class="sf-q h0" d="M252.6 436.6 L269.5 437.4 L256.3 433.5 L239.5 433.5 Z"/><path class="sf-q h1" d="M389.2 406.7 L406.0 393.2 L392.9 396.2 L376.1 410.5 Z"/><path class="sf-q h1" d="M146.0 390.2 L162.8 402.7 L149.7 393.7 L132.9 382.1 Z"/><path class="sf-q h0" d="M282.6 438.6 L299.4 436.7 L286.3 434.7 L269.5 437.4 Z"/><path class="sf-q h1" d="M419.2 387.4 L436.0 371.2 L422.8 376.1 L406.0 393.2 Z"/><path class="sf-q h0" d="M176.0 408.9 L192.8 418.6 L179.6 411.6 L162.8 402.7 Z"/><path class="sf-q h0" d="M312.5 436.0 L329.3 431.4 L316.2 431.3 L299.4 436.7 Z"/><path class="sf-q h2" d="M449.1 363.5 L465.9 344.5 L452.8 351.4 L436.0 371.2 Z"/><path class="sf-q h0" d="M205.9 422.9 L222.7 429.9 L209.6 424.9 L192.8 418.6 Z"/><path class="sf-q h0" d="M342.5 428.7 L359.3 421.4 L346.1 423.3 L329.3 431.4 Z"/><path class="sf-q h2" d="M99.3 348.2 L116.1 366.9 L102.9 356.8 L86.1 338.9 Z"/><path class="sf-q h0" d="M235.8 432.3 L252.6 436.6 L239.5 433.5 L222.7 429.9 Z"/><path class="sf-q h0" d="M372.4 416.7 L389.2 406.7 L376.1 410.5 L359.3 421.4 Z"/><path class="sf-q h1" d="M129.2 374.2 L146.0 390.2 L132.9 382.1 L116.1 366.9 Z"/><path class="sf-q h0" d="M265.8 437.0 L282.6 438.6 L269.5 437.4 L252.6 436.6 Z"/><path class="sf-q h1" d="M402.3 400.2 L419.2 387.4 L406.0 393.2 L389.2 406.7 Z"/><path class="sf-q h1" d="M159.2 395.6 L176.0 408.9 L162.8 402.7 L146.0 390.2 Z"/><path class="sf-q h0" d="M295.7 437.1 L312.5 436.0 L299.4 436.7 L282.6 438.6 Z"/><path class="sf-q h2" d="M432.3 378.9 L449.1 363.5 L436.0 371.2 L419.2 387.4 Z"/><path class="sf-q h0" d="M189.1 412.4 L205.9 422.9 L192.8 418.6 L176.0 408.9 Z"/><path class="sf-q h0" d="M325.7 432.5 L342.5 428.7 L329.3 431.4 L312.5 436.0 Z"/><path class="sf-q h0" d="M219.0 424.4 L235.8 432.3 L222.7 429.9 L205.9 422.9 Z"/><path class="sf-q h0" d="M355.6 423.2 L372.4 416.7 L359.3 421.4 L342.5 428.7 Z"/><path class="sf-q h2" d="M112.4 354.8 L129.2 374.2 L116.1 366.9 L99.3 348.2 Z"/><path class="sf-q h0" d="M249.0 431.9 L265.8 437.0 L252.6 436.6 L235.8 432.3 Z"/><path class="sf-q h1" d="M385.5 409.4 L402.3 400.2 L389.2 406.7 L372.4 416.7 Z"/><path class="sf-q h1" d="M142.3 378.8 L159.2 395.6 L146.0 390.2 L129.2 374.2 Z"/><path class="sf-q h0" d="M278.9 434.6 L295.7 437.1 L282.6 438.6 L265.8 437.0 Z"/><path class="sf-q h1" d="M415.5 390.8 L432.3 378.9 L419.2 387.4 L402.3 400.2 Z"/><path class="sf-q h1" d="M172.3 398.3 L189.1 412.4 L176.0 408.9 L159.2 395.6 Z"/><path class="sf-q h0" d="M308.9 432.8 L325.7 432.5 L312.5 436.0 L295.7 437.1 Z"/><path class="sf-q h1" d="M202.2 413.1 L219.0 424.4 L205.9 422.9 L189.1 412.4 Z"/><path class="sf-q h0" d="M338.8 426.2 L355.6 423.2 L342.5 428.7 L325.7 432.5 Z"/><path class="sf-q h0" d="M232.2 423.2 L249.0 431.9 L235.8 432.3 L219.0 424.4 Z"/><path class="sf-q h1" d="M368.7 415.1 L385.5 409.4 L372.4 416.7 L355.6 423.2 Z"/><path class="sf-q h2" d="M125.5 358.5 L142.3 378.8 L129.2 374.2 L112.4 354.8 Z"/><path class="sf-q h0" d="M262.1 428.7 L278.9 434.6 L265.8 437.0 L249.0 431.9 Z"/><path class="sf-q h1" d="M398.7 399.2 L415.5 390.8 L402.3 400.2 L385.5 409.4 Z"/><path class="sf-q h2" d="M155.5 380.7 L172.3 398.3 L159.2 395.6 L142.3 378.8 Z"/><path class="sf-q h0" d="M292.0 429.5 L308.9 432.8 L295.7 437.1 L278.9 434.6 Z"/><path class="sf-q h1" d="M185.4 398.2 L202.2 413.1 L189.1 412.4 L172.3 398.3 Z"/><path class="sf-q h0" d="M322.0 425.7 L338.8 426.2 L325.7 432.5 L308.9 432.8 Z"/><path class="sf-q h1" d="M215.4 411.0 L232.2 423.2 L219.0 424.4 L202.2 413.1 Z"/><path class="sf-q h1" d="M351.9 417.2 L368.7 415.1 L355.6 423.2 L338.8 426.2 Z"/><path class="sf-q h1" d="M245.3 419.2 L262.1 428.7 L249.0 431.9 L232.2 423.2 Z"/><path class="sf-q h1" d="M381.9 404.1 L398.7 399.2 L385.5 409.4 L368.7 415.1 Z"/><path class="sf-q h2" d="M138.7 359.6 L155.5 380.7 L142.3 378.8 L125.5 358.5 Z"/><path class="sf-q h1" d="M275.2 422.8 L292.0 429.5 L278.9 434.6 L262.1 428.7 Z"/><path class="sf-q h2" d="M168.6 379.8 L185.4 398.2 L172.3 398.3 L155.5 380.7 Z"/><path class="sf-q h1" d="M305.2 421.7 L322.0 425.7 L308.9 432.8 L292.0 429.5 Z"/><path class="sf-q h1" d="M198.5 395.4 L215.4 411.0 L202.2 413.1 L185.4 398.2 Z"/><path class="sf-q h1" d="M335.1 415.9 L351.9 417.2 L338.8 426.2 L322.0 425.7 Z"/><path class="sf-q h1" d="M228.5 406.3 L245.3 419.2 L232.2 423.2 L215.4 411.0 Z"/><path class="sf-q h1" d="M365.1 405.5 L381.9 404.1 L368.7 415.1 L351.9 417.2 Z"/><path class="sf-q h1" d="M258.4 412.5 L275.2 422.8 L262.1 428.7 L245.3 419.2 Z"/><path class="sf-q h2" d="M151.8 357.9 L168.6 379.8 L155.5 380.7 L138.7 359.6 Z"/><path class="sf-q h1" d="M288.4 414.1 L305.2 421.7 L292.0 429.5 L275.2 422.8 Z"/><path class="sf-q h2" d="M181.7 376.2 L198.5 395.4 L185.4 398.2 L168.6 379.8 Z"/><path class="sf-q h1" d="M318.3 411.1 L335.1 415.9 L322.0 425.7 L305.2 421.7 Z"/><path class="sf-q h2" d="M211.7 389.8 L228.5 406.3 L215.4 411.0 L198.5 395.4 Z"/><path class="sf-q h1" d="M348.2 403.4 L365.1 405.5 L351.9 417.2 L335.1 415.9 Z"/><path class="sf-q h1" d="M241.6 398.7 L258.4 412.5 L245.3 419.2 L228.5 406.3 Z"/><path class="sf-q h1" d="M271.6 403.0 L288.4 414.1 L275.2 422.8 L258.4 412.5 Z"/><path class="sf-q h3" d="M164.9 353.4 L181.7 376.2 L168.6 379.8 L151.8 357.9 Z"/><path class="sf-q h1" d="M301.5 402.7 L318.3 411.1 L305.2 421.7 L288.4 414.1 Z"/><path class="sf-q h2" d="M194.9 369.8 L211.7 389.8 L198.5 395.4 L181.7 376.2 Z"/><path class="sf-q h2" d="M331.4 397.7 L348.2 403.4 L335.1 415.9 L318.3 411.1 Z"/><path class="sf-q h2" d="M224.8 381.4 L241.6 398.7 L228.5 406.3 L211.7 389.8 Z"/><path class="sf-q h2" d="M254.8 388.5 L271.6 403.0 L258.4 412.5 L241.6 398.7 Z"/><path class="sf-q h2" d="M284.7 390.8 L301.5 402.7 L288.4 414.1 L271.6 403.0 Z"/><path class="sf-q h3" d="M178.1 346.2 L194.9 369.8 L181.7 376.2 L164.9 353.4 Z"/><path class="sf-q h2" d="M314.6 388.6 L331.4 397.7 L318.3 411.1 L301.5 402.7 Z"/><path class="sf-q h3" d="M208.0 360.6 L224.8 381.4 L211.7 389.8 L194.9 369.8 Z"/><path class="sf-q h2" d="M237.9 370.4 L254.8 388.5 L241.6 398.7 L224.8 381.4 Z"/><path class="sf-q h2" d="M267.9 375.4 L284.7 390.8 L271.6 403.0 L254.8 388.5 Z"/><path class="sf-q h2" d="M297.8 375.9 L314.6 388.6 L301.5 402.7 L284.7 390.8 Z"/><path class="sf-q h3" d="M191.2 336.3 L208.0 360.6 L194.9 369.8 L178.1 346.2 Z"/><path class="sf-q h3" d="M221.1 348.8 L237.9 370.4 L224.8 381.4 L208.0 360.6 Z"/><path class="sf-q h3" d="M251.1 356.5 L267.9 375.4 L254.8 388.5 L237.9 370.4 Z"/><path class="sf-q h3" d="M281.0 359.7 L297.8 375.9 L284.7 390.8 L267.9 375.4 Z"/><path class="sf-q h4" d="M204.3 323.6 L221.1 348.8 L208.0 360.6 L191.2 336.3 Z"/><path class="sf-q h4" d="M234.3 334.1 L251.1 356.5 L237.9 370.4 L221.1 348.8 Z"/><path class="sf-q h4" d="M264.2 340.0 L281.0 359.7 L267.9 375.4 L251.1 356.5 Z"/><path class="sf-q h5" d="M217.5 308.2 L234.3 334.1 L221.1 348.8 L204.3 323.6 Z"/><path class="sf-q h4" d="M247.4 316.8 L264.2 340.0 L251.1 356.5 L234.3 334.1 Z"/><path class="sf-q h5" d="M230.6 290.0 L247.4 316.8 L234.3 334.1 L217.5 308.2 Z"/><line class="sf-ax" x1="20.5" y1="410.6" x2="20.5" y2="140.0"/><line class="sf-ax" x1="16.5" y1="410.6" x2="20.5" y2="410.6"/><text class="sf-t" x="12.5" y="414.6" text-anchor="end">0</text><line class="sf-ax" x1="16.5" y1="316.9" x2="20.5" y2="316.9"/><text class="sf-t" x="12.5" y="320.9" text-anchor="end">10</text><line class="sf-ax" x1="16.5" y1="223.2" x2="20.5" y2="223.2"/><text class="sf-t" x="12.5" y="227.2" text-anchor="end">20</text><text class="sf-t sf-lab" x="16.5" y="130.0" text-anchor="middle">E[w]</text><text class="sf-t sf-lab" x="382.6" y="493.4" text-anchor="middle">w0</text><text class="sf-t sf-lab" x="106.5" y="477.7" text-anchor="middle">w1</text><path id="sf-route" class="sf-route" d="M64.2 300.1 L140.2 357.5 L182.5 384.7 L208.9 400.4 L226.7 409.7 L238.9 415.3 L247.5 418.8 L253.6 421.0 L257.9 422.4 L261.0 423.3 L263.1 423.9 L264.7 424.3 L265.7 424.6 L266.5 424.8 L267.1 424.9 L267.5 425.0 L267.7 425.1"/><circle class="sf-step" cx="64.2" cy="300.1" r="2.4"/><circle class="sf-step" cx="140.2" cy="357.5" r="2.4"/><circle class="sf-step" cx="182.5" cy="384.7" r="2.4"/><circle class="sf-step" cx="208.9" cy="400.4" r="2.4"/><circle class="sf-step" cx="226.7" cy="409.7" r="2.4"/><circle class="sf-step" cx="238.9" cy="415.3" r="2.4"/><circle class="sf-step" cx="247.5" cy="418.8" r="2.4"/><circle class="sf-step" cx="253.6" cy="421.0" r="2.4"/><circle class="sf-step" cx="257.9" cy="422.4" r="2.4"/><circle class="sf-step" cx="261.0" cy="423.3" r="2.4"/><circle class="sf-step" cx="263.1" cy="423.9" r="2.4"/><circle class="sf-step" cx="264.7" cy="424.3" r="2.4"/><circle class="sf-step" cx="265.7" cy="424.6" r="2.4"/><circle class="sf-step" cx="266.5" cy="424.8" r="2.4"/><circle class="sf-step" cx="267.1" cy="424.9" r="2.4"/><circle class="sf-step" cx="267.5" cy="425.0" r="2.4"/><line class="sf-drop" x1="64.2" y1="302.4" x2="64.2" y2="410.8"/><line class="sf-grad" x1="64.2" y1="410.8" x2="107.7" y2="408.3"/><polygon class="sf-head" points="107.7,408.3 99.6,412.3 99.2,405.3"/><circle class="sf-start" cx="64.2" cy="302.4" r="4"/><circle class="sf-ball" r="5.5"><animateMotion dur="7s" repeatCount="indefinite" calcMode="linear" keyPoints="0;1;1" keyTimes="0;0.85;1"><mpath href="#sf-route"/></animateMotion></circle></svg>
+              <figcaption>
+                <strong>Why the weights move.</strong> For a linear unit with two weights, error over the
+                <code>w0</code>, <code>w1</code> plane is a bowl. Gradient descent steps against the gradient (the floor
+                arrow is the negative gradient at the start point) until it reaches the bottom. Backpropagation finds the
+                same downhill direction for every weight in the network at once, and momentum smooths the steps. An
+                illustration of the idea, not data from the app.
+              </figcaption>
+            </figure>
+        </div>
+
+        <h3 class="sub">Implementation</h3>
+        <p class="section-lede">Custom data structure: <code>NeuralNode</code>, an object per neuron with the weights stored on the sending neuron.</p>
+        <pre class="codeblock" tabindex="0"><code>public class NeuralNode {
+    String name;                        // "Input 1", "Hidden Layer: 1 Node: 3", "Output: 2"
+    NeuralNode[] children;              // next layer (fan-out)
+    double[] weights;                   // weights[k] = weight on edge this -&gt; children[k]
+    double[] previousChangeInWeights;   // delta-w from the previous update (momentum memory)
+    double value;                       // activation o_j from the last forward pass
+    double bias;                        // per-node bias, U(-0.5, 0.5)
+    double previousChangeInBias;        // delta-b from the previous update (momentum memory)
+    double error;                       // delta_j from the last backward pass
+    SigmoidActivation activation;
+}</code></pre>
+        <ul class="bullets">
+          <li><code>setChildren(NeuralNode[])</code> creates the edges and allocates <code>weights</code> and <code>previousChangeInWeights</code>, one slot per child. All weights start <strong>uniform in [&minus;0.5, 0.5)</strong>, Mitchell's &ldquo;small random values&rdquo;.</li>
+          <li>Keeping the previous &Delta; on each node makes momentum <strong>local state</strong>. No separate gradient tensors are needed.</li>
+          <li><code>NeuralNetwork</code> holds <code>inputLayer</code> (4), an <code>ArrayList&lt;NeuralNode[]&gt;</code> of hidden layers (any depth) and <code>outputLayer</code> (3). <code>setupLayers</code> creates and names the nodes, and <code>connectLayers</code> wires input &rarr; hidden<sub>1</sub> &rarr; &hellip; &rarr; hidden<sub>n</sub> &rarr; output.</li>
+          <li><code>ActivationFunction</code> is an interface (<code>activate(x)</code>, <code>derivative(x)</code>) implemented by <code>SigmoidActivation</code>.</li>
+        </ul>
+        <pre class="codeblock" tabindex="0"><code>sigma(x)  = 1 / (1 + e^(-x))
+sigma'(o) = o * (1 - o)          // takes the already-activated output o (Mitchell's form)</code></pre>
+        <p class="note" style="margin-top: 0">Passing the activated value to <code>derivative</code> avoids computing <code>exp</code> a second time during backpropagation.</p>
+
+        <h3 class="sub">Forward and backward passes</h3>
+        <pre class="codeblock" tabindex="0"><code>Forward (feedForward), for each non-input unit j:
+  net_j = b_j + sum_i( w_ij * o_i )      o_j = sigma(net_j)
+
+Backward (calculateOutputError, calculateHiddenLayerError), Mitchell's Table 4.2:
+  Output unit k:   delta_k = o_k (1 - o_k) (t_k - o_k)
+  Hidden unit h:   delta_h = o_h (1 - o_h) * sum_{k in children(h)} ( w_hk * delta_k )</code></pre>
+        <p class="note" style="margin-top: 0">Hidden layers are processed from last to first, so each layer uses its children's &delta; values computed in the same pass.</p>
+
+        <h3 class="sub">Target encoding and prediction</h3>
+        <ul class="bullets tight">
+          <li><strong>One-hot targets.</strong> For a label <code>c &isin; {0, 1, 2}</code> the target is <code>t_k = 1</code> when <code>k == c</code> and 0 otherwise, so each output neuron is a &ldquo;class <em>k</em> detector&rdquo;.</li>
+          <li><strong>Prediction</strong> (<code>makePrediction</code>) is the argmax over the three sigmoid outputs (Setosa, Virginica, Versicolor).</li>
+        </ul>
+
+        <h3 class="sub">Weight update with momentum <code>updateWeights</code></h3>
+        <p class="section-lede">Mitchell's momentum rule (eq. 4.18), applied after <strong>every</strong> training example.</p>
+        <pre class="codeblock" tabindex="0"><code>delta_w_ij(n) = eta * delta_j * o_i  +  alpha * delta_w_ij(n - 1)
+w_ij          = w_ij + delta_w_ij(n)
+
+delta_b_j(n)  = eta * delta_j  +  alpha * delta_b_j(n - 1)        // hidden-layer biases</code></pre>
+        <p class="note" style="margin-top: 0">
+          The previous &Delta; is saved on the node and reused as the momentum term in the next update. Momentum
+          effectively increases the step size where the gradient is steady (Mitchell &sect;4.5.2.1).
+        </p>
+        <div class="callout">
+          <p>
+            <strong>Decaying momentum (optional, off by default).</strong> The training loop passes the current epoch
+            and total epochs into <code>updateWeights(epochNumber, epochs)</code>, which computes
+            <code>decayValue = (epochs &minus; epochNumber) / epochs</code> as the basis for a linear schedule,
+            <code>&alpha;<sub>t</sub> = &alpha;<sub>0</sub>&middot;(1 &minus; t/T)</code>: high momentum early to move past
+            flat regions, shrinking late so the weights settle without overshooting. The decayed-&alpha; line is
+            commented out, so training uses a constant &alpha;.
+          </p>
+        </div>
+
+        <h3 class="sub">Parameters</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Neural network parameters table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Parameter</th><th scope="col">UI default</th><th scope="col">Range or options</th><th scope="col">Notes</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Input units</th><td>4</td><td>fixed</td><td>One per Iris feature, raw cm values, not normalized.</td></tr>
+              <tr><th scope="row">Output units</th><td>3</td><td>fixed</td><td>One-hot Setosa, Virginica, Versicolor.</td></tr>
+              <tr><th scope="row">Hidden layers</th><td>1</td><td>&ge; 1</td><td>Any depth supported by <code>ArrayList&lt;NeuralNode[]&gt;</code>.</td></tr>
+              <tr><th scope="row">Neurons per layer</th><td>5</td><td>&ge; 1</td><td>Same width for every hidden layer.</td></tr>
+              <tr><th scope="row">Learning rate &eta;</th><td>0.05</td><td>step 0.01</td><td><code>NetworkRequest.learningRate</code></td></tr>
+              <tr><th scope="row">Momentum &alpha;</th><td>0.8</td><td>step 0.01</td><td><code>NetworkRequest.momentum</code></td></tr>
+              <tr><th scope="row">Epochs</th><td>500</td><td>&ge; 1</td><td>The training loop currently uses a fixed <strong>300</strong> (see <a href="#status">known bugs</a>).</td></tr>
+              <tr><th scope="row">Activation</th><td>Sigmoid</td><td>UI lists Sigmoid, Tanh, ReLU, GELU</td><td>Only <code>SigmoidActivation</code> is implemented. The <code>ActivationFunction</code> interface is where the others would go.</td></tr>
+              <tr><th scope="row">Weight and bias init</th><td>U(&minus;0.5, 0.5)</td><td>&ndash;</td><td><code>Random.nextDouble() &minus; 0.5</code></td></tr>
+              <tr><th scope="row">Update schedule</th><td>per example</td><td>file order</td><td>Stochastic gradient descent.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Evaluation</h3>
+        <ul class="bullets">
+          <li><code>Driver.testExamples</code> runs every test row through <code>makePrediction</code> and builds a fixed-width report: <strong>Accuracy %</strong>, a <em>Correct Predictions</em> table (4 features, model prediction, actual class) and a <em>Confusion Matrix</em> section that lists every misclassified example, or &ldquo;No misclassifications found!&rdquo;.</li>
+          <li>On <code>/nn_results</code>, <strong>Train Network</strong> posts the hyperparameters, <strong>Check Accuracy</strong> fetches the report for the selected test file, and <strong>View Network</strong> opens the topology with the current shape.</li>
+        </ul>
+      </section>
+
+      <!-- ============================== GA ============================== -->
+      <section id="ga" class="block" aria-labelledby="ga-title">
+        <p class="chapter">Algorithm 3 &middot; Mitchell, Ch. 9</p>
+        <h2 id="ga-title">Genetic algorithm, GABIL-style</h2>
+        <p class="section-lede">
+          The GA evolves a population of rule-set hypotheses for PlayTennis, each encoded as a bit string (Mitchell
+          Table 9.1, the prototypical GA, and &sect;9.3, GABIL). Fitness rewards accuracy and can penalize rule count.
+          This implementation adds an <strong>island model</strong>: several populations with different selection,
+          crossover and mutation settings evolve side by side.
+        </p>
+
+        <article class="playback wide">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="1256"
+            height="606"
+            poster="/mlviz/playback/ga.jpg"
+            style="--vw: 1120px"
+            aria-label="Screen recording of the genetic algorithm pages: adding islands with different settings, evolving them, viewing the island graph and a population, and reading a hypothesis breakdown"
+          >
+            <source src="/mlviz/playback/ga.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>Building an archipelago</h3>
+            <p>
+              Add islands with different settings (one uses the GABIL mutation extension), send the setup, step the
+              evolution one generation at a time, open the islands, then click into a population and decode a
+              hypothesis rule by rule.
+            </p>
+          </div>
+        </article>
+
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Search strategy</h3>
+            <p>Stochastic and population-based, with no gradient. Selection keeps the fitter hypotheses, crossover recombines them, and mutation adds variation. Several islands search in parallel from different random starting points.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Inductive bias</h3>
+            <p>It comes from three places: the <strong>encoding</strong> (an ordered list of rules, each a conjunction of per-attribute disjunctions), the <strong>fitness</strong> (accuracy squared minus a rule-count penalty, so accurate and compact is preferred), and the <strong>operators</strong>, which decide what can be reached from where.</p>
+          </li>
+        </ul>
+
+        <h3 class="sub">What the UI shows</h3>
+        <div class="split wide-fig">
+          <figure class="shot">
+            <img src="/mlviz/screens/ga_islands.png" width="950" height="686" alt="Five islands drawn as palm-tree domes, connected by red and grey migration edges" loading="lazy" />
+            <figcaption>Five islands, each with its own population of 50.</figcaption>
+          </figure>
+          <div class="prose">
+            <p>
+              Islands do not reproduce with each other. The edges are the migration topology you draw yourself.
+              <strong>Red</strong> connections mean two islands directly swap individuals. <strong>Grey</strong>
+              connections mean one island gives individuals to another while receiving from a different one.
+            </p>
+            <p class="note" style="margin-top: 0">
+              The edges are stored in the browser but the backend does not read them yet. See
+              <a href="#status">known bugs</a>.
+            </p>
+          </div>
+        </div>
+        <div class="screens">
+          <figure class="shot wide">
+            <img src="/mlviz/screens/ga_population.png" width="1867" height="491" alt="Island 3 detail page: its population size, selection, mutation, crossover and rule-length penalty settings, and a list of hypotheses with bit strings, fitness and a Hypothesis Breakdown button" loading="lazy" />
+            <figcaption>One island after training: every individual in its population with its fitness, a button to a plain-English breakdown of that hypothesis, and the island's own hyperparameters on the left.</figcaption>
+          </figure>
+          <figure class="shot wide">
+            <img src="/mlviz/screens/ga_breakdown.png" width="1862" height="547" alt="Hypothesis Breakdown page: the full bit string, a list of rules, the selected rule decoded into an IF-THEN sentence, and a labelled sample hypothesis showing which bits encode which attribute" loading="lazy" />
+            <figcaption>The breakdown page. Left: the hypothesis split into rules. Centre: the selected rule decoded into English. Right: a labelled sample showing which run of bits encodes which attribute.</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub">Hypothesis encoding: 11-bit rules</h3>
+        <p class="section-lede">
+          <code>Evaluator.getAttributeInformation</code> reads the training file and builds an ordered value list per
+          attribute, which gives a fixed 11-bit rule layout. A hypothesis is a variable-length <code>int[]</code> of
+          <strong>k rules joined end to end</strong> (length <code>11&middot;k</code>).
+        </p>
+        <figure class="bitfig">
+          <div class="bits" role="img" aria-label="An example rule: Outlook bits 1 0 0, Temperature bits 1 1 1, Humidity bits 1 0, Wind bits 1 1, class bit 0. It reads: IF Outlook is Sunny AND Humidity is High THEN PlayTennis is No.">
+            <div class="grp"><span class="gname">Outlook</span><div class="cells">
+              <span class="cell on"><b>1</b><i>Sunny</i></span><span class="cell"><b>0</b><i>Overcast</i></span><span class="cell"><b>0</b><i>Rain</i></span>
+            </div></div>
+            <div class="grp"><span class="gname">Temperature</span><div class="cells">
+              <span class="cell on"><b>1</b><i>Hot</i></span><span class="cell on"><b>1</b><i>Mild</i></span><span class="cell on"><b>1</b><i>Cool</i></span>
+            </div></div>
+            <div class="grp"><span class="gname">Humidity</span><div class="cells">
+              <span class="cell on"><b>1</b><i>High</i></span><span class="cell"><b>0</b><i>Normal</i></span>
+            </div></div>
+            <div class="grp"><span class="gname">Wind</span><div class="cells">
+              <span class="cell on"><b>1</b><i>Weak</i></span><span class="cell on"><b>1</b><i>Strong</i></span>
+            </div></div>
+            <div class="grp"><span class="gname">Class</span><div class="cells">
+              <span class="cell"><b>0</b><i>0 = No</i></span>
+            </div></div>
+          </div>
+          <figcaption>
+            <code>100 111 10 11 0</code> reads <strong>IF</strong> Outlook = Sunny <strong>AND</strong> Humidity = High
+            <strong>THEN</strong> PlayTennis = No. Temperature and Wind are all ones, so they are &ldquo;don't care&rdquo;.
+          </figcaption>
+        </figure>
+        <ul class="bullets">
+          <li><strong>Preconditions</strong> (bits 0 to 9) use one bit per attribute value. A <code>1</code> means the value is allowed. Several ones in one attribute block form a <strong>disjunction</strong>, a block of all ones means <strong>don't care</strong>, and a block of all zeros can never match.</li>
+          <li><strong>Postcondition</strong> (bit 10) is the class index (<code>0 = No</code>, <code>1 = Yes</code>).</li>
+          <li><strong>Training examples use the same encoding</strong> (<code>Evaluator.processExamples2</code>): a one-hot bit for each attribute value and the class in slot 10. A rule matches an example when, in every attribute block, at least one bit position is 1 in both the rule and the example.</li>
+        </ul>
+
+        <h3 class="sub">Custom data structures</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="GA classes table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>CandidateHyp</code></th><td><code>{ int[] hypothesis; double fitness }</code>. Fitness is cached so selection never re-evaluates. It is also the JSON object returned to the UI.</td></tr>
+              <tr><th scope="row"><code>HypothesesUtilities</code></th><td>Bit-string algebra: <code>breakHypIntoRules(h, 11)</code>, <code>buildHypothesis(rules, 11)</code>, <code>splitHypothesis(h, p1, p2)</code> into <code>[head, middle, tail]</code>, and a join of three segments.</td></tr>
+              <tr><th scope="row"><code>Evaluator</code></th><td>Holds the attribute-to-value map, the encoded examples, &lambda;, and the fitness and accuracy functions.</td></tr>
+              <tr><th scope="row"><code>Island</code></th><td>One population plus its own selection, crossover and mutation strategies, evaluator and rates. <code>evolve()</code> runs one generation.</td></tr>
+              <tr><th scope="row"><code>AlgoTester</code></th><td>Builds islands from DTOs, generates initial populations, advances generations, reports results, and stores a <code>HashMap&lt;"island-N", Island&gt;</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          <strong>Strategy pattern throughout.</strong> Each genetic operator has an interface and an abstract base
+          class holding a shared <code>Random</code> and helpers (<code>flipBit</code>, <code>standardMutation</code>,
+          <code>shouldMutate</code>). Concrete classes are chosen per island from the DTO strings by factory methods, so
+          any combination of operators can run on any island.
+        </p>
+
+        <h3 class="sub">Fitness</h3>
+        <pre class="codeblock" tabindex="0"><code>accuracy(h) = (# training examples correctly classified by h) / |examples|
+fitness(h)  = accuracy(h)^2  -  lambda * (#rules in h)          // #rules = |h| / 11
+fitness(h)  = 0.001   if the above &lt;= 0                          // floor ("zombie" sentinel)</code></pre>
+        <ul class="bullets tight">
+          <li><strong>Squaring the accuracy</strong> follows GABIL and sharpens selection pressure between hypotheses of similar quality.</li>
+          <li><strong>&lambda;, the rule-length penalty</strong> (per island, default 0.015), is the <em>accuracy &minus; &lambda;&middot;complexity</em> trade-off. It works against rule-set bloat, which matters because variable-length crossover can make hypotheses grow.</li>
+          <li><strong>Ordered classification.</strong> A hypothesis's rules are tried in order and the first match decides. An example no rule matches counts as incorrect.</li>
+          <li>The <strong>0.001 floor</strong> keeps fitness positive for roulette-wheel selection. <code>FitnessProportionalSelection</code> also uses it as a sentinel and skips &ldquo;zombie&rdquo; hypotheses.</li>
+        </ul>
+        <p class="note">
+          <strong>Initial population.</strong> <code>AlgoTester.generateFirstGeneration(popSize)</code> gives each
+          individual 5 or 6 rules (50/50), with every bit set to 1 with probability &frac12;. Each island draws its own,
+          so the islands start from different points in the search space.
+        </p>
+
+        <h3 class="sub">Selection strategies</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Selection strategies table">
+          <table class="data-table files">
+            <thead><tr><th scope="col">UI value</th><th scope="col">Mechanism</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>fitnessProportionate</code><br /><span class="aside" style="margin: 0">backend fallback</span></th><td><code>FitnessProportionalSelection</code>: <strong>roulette wheel</strong> (Mitchell eq. 9.1), <code>P(h) = f(h) / &Sigma; f</code>, sampling with replacement and skipping zombies.</td></tr>
+              <tr><th scope="row"><code>rank</code></th><td><code>RankSelection</code>: sort by fitness, descending. Rank <em>i</em> gets weight <code>n &minus; i</code>, and sampling is over the total <code>n(n+1)/2</code>. Less dominated by a few elite individuals than roulette.</td></tr>
+              <tr><th scope="row"><code>tournament</code></th><td><code>TournamentSelection(k = 3)</code>: draw 3 individuals at random (with replacement) and keep the fittest. <em>k</em> sets the selection pressure.</td></tr>
+              <tr><th scope="row"><code>fitness</code></th><td><code>FitnessSelection</code>: <strong>truncation, elitist</strong>. Deterministically take the top <em>r</em> by fitness.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Crossover strategies</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Crossover strategies table">
+          <table class="data-table files">
+            <thead><tr><th scope="col">UI value</th><th scope="col">Mechanism</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>onePoint</code></th><td><code>SinglePointCrossover</code>: pick one random point and swap tails.</td></tr>
+              <tr><th scope="row"><code>twoPoint</code></th><td><code>TwoPointCrossover</code>: pick two distinct points and swap the middle segments.</td></tr>
+              <tr><th scope="row"><code>extendedTwoPoint</code></th><td><code>ExtendedTwoPointCrossover</code>: split both parents into <code>[head, middle, tail]</code> at the same two points. With 50% probability swap <strong>tails</strong> (and then, with another 50%, also swap middles). Otherwise swap <strong>only middles</strong>. That gives three kinds of offspring instead of one.</td></tr>
+              <tr><th scope="row"><code>vary</code> (default)</th><td><code>VaryingRuleLengthCrossover</code>: GABIL variable-length crossover, below.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <h3 class="sub">Varying-rule-length crossover <code>getSplits</code></h3>
+        <ol class="steps">
+          <li>Choose two within-rule offsets <code>d1 &le; d2</code> in <code>[0, 11)</code>.</li>
+          <li>In parent A, choose rule indices <code>r3 &le; r4</code> and cut at <code>r3&middot;11 + d1</code> and <code>r4&middot;11 + d2</code>.</li>
+          <li>In parent B, choose its own rule indices <code>r5 &le; r6</code> but cut at the <strong>same offsets</strong> <code>d1</code> and <code>d2</code>.</li>
+          <li>Child A is <code>A.head + B.middle + A.tail</code> and child B is <code>B.head + A.middle + B.tail</code>.</li>
+        </ol>
+        <p class="note">
+          Because both parents are cut at the same positions <em>within</em> a rule, every child is still a whole number
+          of 11-bit rules with each bit in its correct field. Because they can be cut at <em>different</em> rule indices,
+          children can have more or fewer rules than either parent. That is how the GA explores rule sets of different
+          sizes, with &lambda; pushing back against growth.
+        </p>
+
+        <h3 class="sub">Mutation strategies</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Mutation strategies table">
+          <table class="data-table files">
+            <thead><tr><th scope="col">UI value</th><th scope="col">Mechanism</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>standard</code> (default)</th><td><code>StandardMutation(rate)</code>: independent bit flips with probability <code>mutationRate</code> (default 0.01) per bit.</td></tr>
+              <tr><th scope="row"><code>gabil</code></th><td><code>GabilMutation(rate, addAlt = 0.0005, dropCond = 0.0001)</code>: per rule, a roulette choice between three operators weighted by their rates.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="bullets tight">
+          <li><strong>AddAlternative</strong> generalizes one attribute: within an attribute block it sets a random <code>0</code> bit to <code>1</code>, adding a disjunct such as Sunny &rarr; Sunny or Rain. If every bit is already 1, the attribute is skipped.</li>
+          <li><strong>DropCondition</strong> removes an attribute's constraint by setting its whole block to 1 (&ldquo;don't care&rdquo;).</li>
+          <li><strong>Standard bit flip</strong> is used otherwise. With the default rates about 94% of rules get a standard flip, about 4.7% AddAlternative and about 0.9% DropCondition.</li>
+        </ul>
+
+        <h3 class="sub">Operators by example</h3>
+        <p class="section-lede">
+          The same two 11-bit parents run through each operator. A mask bit of <code>1</code> means &ldquo;child 1 takes this
+          bit from parent A&rdquo; (child 2 takes it from parent B), and <code>0</code> means the opposite. Cells are coloured by
+          which parent they came from.
+        </p>
+        <div class="xo-legend" aria-hidden="true"><span><i class="from-a"></i>from parent A</span><span><i class="from-b"></i>from parent B</span><span><i class="flip"></i>flipped bit</span></div>
+        <div class="xo-grid">
+          <figure class="xo" role="group" aria-label="One-point crossover. Parent A 11101001000, parent B 00001010101, mask 11111000000, child 1 11101010101, child 2 00001001000.">
+            <div class="xo-title"><strong>One-point crossover</strong> <code>onePoint</code></div>
+            <div class="xo-row"><span class="xo-label">Parent A</span><div class="xo-bits"><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a cut">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span></div></div>
+            <div class="xo-row"><span class="xo-label">Parent B</span><div class="xo-bits"><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b cut">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span></div></div>
+            <div class="xo-row"><span class="xo-label">Mask</span><div class="xo-bits"><span class="xo-bit m1">1</span><span class="xo-bit m1">1</span><span class="xo-bit m1">1</span><span class="xo-bit m1">1</span><span class="xo-bit m1">1</span><span class="xo-bit m0 cut">0</span><span class="xo-bit m0">0</span><span class="xo-bit m0">0</span><span class="xo-bit m0">0</span><span class="xo-bit m0">0</span><span class="xo-bit m0">0</span></div></div>
+            <div class="xo-row"><span class="xo-label">Child 1</span><div class="xo-bits"><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">1</span><span class="xo-bit from-b cut">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span></div></div>
+            <div class="xo-row"><span class="xo-label">Child 2</span><div class="xo-bits"><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-a cut">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span></div></div>
+            <figcaption>One cut after bit 5. Child 1 is A&rsquo;s head plus B&rsquo;s tail, and child 2 is the reverse.</figcaption>
+          </figure>
+          <figure class="xo" role="group" aria-label="Two-point crossover. Parent A 11101001000, parent B 00001010101, mask 00111110000, child 1 00101000101, child 2 11001011000.">
+            <div class="xo-title"><strong>Two-point crossover</strong> <code>twoPoint</code></div>
+            <div class="xo-row"><span class="xo-label">Parent A</span><div class="xo-bits"><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a cut">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a cut">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span></div></div>
+            <div class="xo-row"><span class="xo-label">Parent B</span><div class="xo-bits"><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b cut">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b cut">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span></div></div>
+            <div class="xo-row"><span class="xo-label">Mask</span><div class="xo-bits"><span class="xo-bit m0">0</span><span class="xo-bit m0">0</span><span class="xo-bit m1 cut">1</span><span class="xo-bit m1">1</span><span class="xo-bit m1">1</span><span class="xo-bit m1">1</span><span class="xo-bit m1">1</span><span class="xo-bit m0 cut">0</span><span class="xo-bit m0">0</span><span class="xo-bit m0">0</span><span class="xo-bit m0">0</span></div></div>
+            <div class="xo-row"><span class="xo-label">Child 1</span><div class="xo-bits"><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-a cut">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-b cut">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span></div></div>
+            <div class="xo-row"><span class="xo-label">Child 2</span><div class="xo-bits"><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-b cut">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-a cut">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span></div></div>
+            <figcaption>Two cuts, after bits 2 and 7. The middle segments are swapped and the ends stay put.</figcaption>
+          </figure>
+          <figure class="xo" role="group" aria-label="Uniform crossover. Parent A 11101001000, parent B 00001010101, mask 10011010011, child 1 10001000100, child 2 01101011001.">
+            <div class="xo-title"><strong>Uniform crossover</strong> <span class="xo-tag">not in the app</span></div>
+            <div class="xo-row"><span class="xo-label">Parent A</span><div class="xo-bits"><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span></div></div>
+            <div class="xo-row"><span class="xo-label">Parent B</span><div class="xo-bits"><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span></div></div>
+            <div class="xo-row"><span class="xo-label">Mask</span><div class="xo-bits"><span class="xo-bit m1">1</span><span class="xo-bit m0">0</span><span class="xo-bit m0">0</span><span class="xo-bit m1">1</span><span class="xo-bit m1">1</span><span class="xo-bit m0">0</span><span class="xo-bit m1">1</span><span class="xo-bit m0">0</span><span class="xo-bit m0">0</span><span class="xo-bit m1">1</span><span class="xo-bit m1">1</span></div></div>
+            <div class="xo-row"><span class="xo-label">Child 1</span><div class="xo-bits"><span class="xo-bit from-a">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">0</span></div></div>
+            <div class="xo-row"><span class="xo-label">Child 2</span><div class="xo-bits"><span class="xo-bit from-b">0</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span></div></div>
+            <figcaption>Every bit is chosen independently by the mask. The app does not include it, but it is the natural extreme of the two above.</figcaption>
+          </figure>
+          <figure class="xo" role="group" aria-label="Point mutation. Before 11101001000, after 11101011000, bit 7 flipped from 0 to 1.">
+            <div class="xo-title"><strong>Point mutation</strong> <code>standard</code></div>
+            <div class="xo-row"><span class="xo-label">Before</span><div class="xo-bits"><span class="xo-bit">1</span><span class="xo-bit">1</span><span class="xo-bit">1</span><span class="xo-bit">0</span><span class="xo-bit">1</span><span class="xo-bit">0</span><span class="xo-bit">0</span><span class="xo-bit">1</span><span class="xo-bit">0</span><span class="xo-bit">0</span><span class="xo-bit">0</span></div></div>
+            <div class="xo-row"><span class="xo-label">After</span><div class="xo-bits"><span class="xo-bit">1</span><span class="xo-bit">1</span><span class="xo-bit">1</span><span class="xo-bit">0</span><span class="xo-bit">1</span><span class="xo-bit">0</span><span class="xo-bit flip">1</span><span class="xo-bit">1</span><span class="xo-bit">0</span><span class="xo-bit">0</span><span class="xo-bit">0</span></div></div>
+            <figcaption>One bit (here bit 7, 0 to 1) is flipped. With <code>standard</code> mutation each bit flips independently with probability <code>mutationRate</code>.</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub">Varying-rule-length crossover, worked</h3>
+        <p class="section-lede">
+          A toy encoding keeps the numbers small: each rule is 5 bits (two attributes of 2 bits each, plus one class bit), where
+          the app&rsquo;s PlayTennis rules are 11 bits. Both parents have two rules. Parent A is cut after bit 1 and bit 8,
+          which is <code>d1 = 1</code> and <code>d2 = 3</code> bits into its rules. Parent B must be cut at the same
+          within-rule offsets, and the legal pairs of cut positions are (1, 3), (1, 8) and (6, 8). Here the pair (1, 3) is chosen.
+        </p>
+        <div class="xo-grid one">
+          <figure class="xo" role="group" aria-label="Varying-rule-length crossover. Parent A 1001111100 has 2 rules, parent B 0111010010 has 2 rules, child 1 11100 has 1 rule, child 2 000111111010010 has 3 rules.">
+            <div class="xo-title"><strong>Rules change length</strong> <code>vary</code></div>
+            <div class="xo-row"><span class="xo-label">Parent A</span><div class="xo-bits"><span class="xo-bit from-a">1</span><span class="xo-bit from-a cut">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a rule-start">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a cut">0</span><span class="xo-bit from-a">0</span></div></div>
+            <div class="xo-row"><span class="xo-label">Parent B</span><div class="xo-bits"><span class="xo-bit from-b">0</span><span class="xo-bit from-b cut">1</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b cut">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b rule-start">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span></div></div>
+            <div class="xo-row"><span class="xo-label">Child 1</span><div class="xo-bits"><span class="xo-bit from-a">1</span><span class="xo-bit from-b cut">1</span><span class="xo-bit from-b">1</span><span class="xo-bit from-a cut">0</span><span class="xo-bit from-a">0</span></div></div>
+            <div class="xo-row"><span class="xo-label">Child 2</span><div class="xo-bits"><span class="xo-bit from-b">0</span><span class="xo-bit from-a cut">0</span><span class="xo-bit from-a">0</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a rule-start">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-a">1</span><span class="xo-bit from-b cut">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b rule-start">1</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">0</span><span class="xo-bit from-b">1</span><span class="xo-bit from-b">0</span></div></div>
+            <figcaption>Child 1 is A&rsquo;s first bit, B&rsquo;s middle two bits and A&rsquo;s last two bits: one whole rule. Child 2 is B&rsquo;s first bit, A&rsquo;s seven-bit middle and B&rsquo;s seven-bit tail: three whole rules. Every child is still a whole number of rules with each bit in its correct field, but the rule counts changed from 2 and 2 to 1 and 3.</figcaption>
+          </figure>
+        </div>
+
+
+        <h3 class="sub">One generation <code>Island.evolve()</code></h3>
+        <pre class="codeblock" tabindex="0"><code>P  = current population (size = selectionRate + crossoverRate)
+
+1. SELECT  S = selectionStrategy.select(P, selectionRate)     # survivors
+2. SELECT  C = selectionStrategy.select(P, crossoverRate)     # parent pool
+3. CROSS   O = repeatedly pick 2 random parents from C -&gt; getOffspring(a, b),
+              score each child; stop once |O| &gt; |C|, then randomly
+              discard until |O| == |C|
+4. REPLACE P = empty
+5. MUTATE  for s in S:  keep s unchanged with p = 0.75, else mutate + re-score
+           for o in O:  ALWAYS mutate + re-score
+           P = mutated S + mutated O</code></pre>
+        <p class="note" style="margin-top: 0">
+          This follows Mitchell's prototypical GA, where <code>(1&minus;r)&middot;p</code> members survive and
+          <code>r&middot;p</code> are produced by crossover. Here both counts are set directly. With the UI defaults
+          (selection rate 4, crossover rate 46, population 50) the population stays at 50 with a crossover fraction of
+          0.92. A survivor is only mutated 25% of the time, so most of the best individuals carry over intact.
+        </p>
+
+        <h3 class="sub">The island model</h3>
+        <ul class="bullets">
+          <li><strong>Heterogeneous islands.</strong> Each <code>IslandConfig</code> sets its own selection strategy and rate, crossover strategy and rate, mutation strategy and rate, &lambda; and population size. You can run tournament plus GABIL next to roulette plus two-point and compare them directly.</li>
+          <li><strong>One generation per click.</strong> <code>POST /ga/train</code> runs exactly one <code>evolve()</code> on every island, sorts each population and prints each island's best bit string, its fitness and its training accuracy. Clicking <strong>Check Results</strong> repeatedly steps through evolution so you can watch convergence happen.</li>
+          <li><strong>Rule pruning helper.</strong> <code>AlgoTester.pruneRules(h, 11, examples)</code> removes any rule that matches no training example. Such rules can never fire, so removing them does not change accuracy and lowers the &lambda; penalty. It is implemented but not yet called in the generation loop.</li>
+        </ul>
+
+        <h3 class="sub">Parameters</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Genetic algorithm parameters table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Parameter</th><th scope="col">UI default</th><th scope="col">Options</th><th scope="col">Backend default if unrecognized</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Population size</th><td>50</td><td>number</td><td>&ndash;</td></tr>
+              <tr><th scope="row">Selection strategy</th><td>Tournament</td><td>Rank, Tournament, Fitness, Fitness Proportional</td><td>Fitness Proportional</td></tr>
+              <tr><th scope="row">Selection rate (survivors)</th><td>4</td><td>integer</td><td>&ndash;</td></tr>
+              <tr><th scope="row">Tournament size <em>k</em></th><td>3</td><td>fixed</td><td>&ndash;</td></tr>
+              <tr><th scope="row">Crossover strategy</th><td>Varying Rule Length</td><td>One-Point, Two-Point, Extended Two-Point, Varying Rule Length</td><td>Varying Rule Length</td></tr>
+              <tr><th scope="row">Crossover rate (offspring count)</th><td>46</td><td>integer</td><td>&ndash;</td></tr>
+              <tr><th scope="row">Mutation strategy</th><td>Standard</td><td>Standard, GABIL Extension</td><td>Standard</td></tr>
+              <tr><th scope="row">Mutation rate</th><td>0.01</td><td>0 to 1</td><td>&ndash;</td></tr>
+              <tr><th scope="row">GABIL AddAlternative rate</th><td>0.0005</td><td>fixed</td><td>&ndash;</td></tr>
+              <tr><th scope="row">GABIL DropCondition rate</th><td>0.0001</td><td>fixed</td><td>&ndash;</td></tr>
+              <tr><th scope="row">Survivor keep-unmutated probability</th><td>0.75</td><td>fixed</td><td>&ndash;</td></tr>
+              <tr><th scope="row">Rule-length penalty &lambda;</th><td>0.015</td><td>&ge; 0</td><td>0 if omitted</td></tr>
+              <tr><th scope="row">Rule length</th><td>11 bits</td><td>fixed by the PlayTennis schema</td><td>&ndash;</td></tr>
+              <tr><th scope="row">Initial rules per hypothesis</th><td>5 or 6</td><td>fixed</td><td>&ndash;</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">User flow</h3>
+        <ol class="steps">
+          <li>On <code>/ga_results</code>, fill in <strong>Island Settings</strong> and click <strong>Add Island</strong>. The form resets to defaults and a read-only card for the island appears, newest first. Repeat to build an archipelago.</li>
+          <li><strong>Send Train POST</strong> calls <code>POST /ga/setupIslands</code> with every island's configuration, which creates each initial population.</li>
+          <li><strong>Check Results</strong> calls <code>POST /ga/train</code>, which runs one generation and reports each island's best hypothesis, fitness and accuracy.</li>
+          <li><strong>View Islands</strong> opens the React Flow archipelago, where you can draw migration edges.</li>
+          <li>Double-clicking an island opens <code>/island/:id</code>, which lists the live population from <code>getPopulation</code>, sorted best first.</li>
+          <li><strong>Hypothesis Breakdown</strong> opens a three-column view: the rules on the left, a carousel (Prev and Next, wrapping around) that shows the selected rule's bits and its decoded IF&ndash;THEN sentence in the centre, and a KaTeX-annotated sample rule on the right as a key to the encoding.</li>
+        </ol>
+      </section>
+
+      <section id="stdlib" class="block" aria-labelledby="stdlib-title">
+        <h2 id="stdlib-title">Standard library only</h2>
+        <p class="section-lede">
+          Everything algorithmic is plain JDK 17. Spring Boot is used only for HTTP routing, dependency injection of
+          <code>TreeService</code>, CORS and Jackson JSON binding. It plays no part in learning or inference.
+        </p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="JDK APIs used table">
+          <table class="data-table">
+            <thead><tr><th scope="col">JDK API</th><th scope="col">Used for</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>ArrayList</code>, arrays (<code>String[]</code>, <code>int[]</code>, <code>double[]</code>, <code>NeuralNode[]</code>)</th><td>Example sets, layers, bit-string genomes, rule lists.</td></tr>
+              <tr><th scope="row"><code>HashMap</code>, <code>LinkedHashMap</code>, <code>HashSet</code></th><td>Tree children by value, partitions by attribute value, label counts, attribute-to-value schemas, ordered DTO rows, token sets.</td></tr>
+              <tr><th scope="row"><code>java.util.Random</code> (<code>nextDouble</code>, <code>nextInt(a, b)</code>, <code>nextDouble(a, b)</code>)</th><td>Weight init, selection wheels, tournaments, crossover points, mutation.</td></tr>
+              <tr><th scope="row"><code>Collections.sort</code></th><td>Ranking populations by fitness, with <code>Comparator.comparingDouble(...).reversed()</code>.</td></tr>
+              <tr><th scope="row"><code>Scanner</code>, <code>Paths</code>, <code>InputStream</code></th><td>Dataset loading.</td></tr>
+              <tr><th scope="row"><code>Math.exp</code>, <code>Math.log</code></th><td>Sigmoid, and log<sub>2</sub> for entropy.</td></tr>
+              <tr><th scope="row"><code>java.lang.reflect.Method</code></th><td>Choosing the ID3 selection measure at runtime.</td></tr>
+              <tr><th scope="row"><code>ByteArrayOutputStream</code>, <code>PrintStream</code></th><td>Capturing algorithm console output as an HTTP response.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="status" class="block" aria-labelledby="status-title">
+        <h2 id="status-title">Known bugs and where it stands</h2>
+        <div class="callout warn">
+          <p>
+            I stopped working on this project. I got bored of it and moved on to the reinforcement-learning
+            algorithms instead, so the bugs below were never fixed. They are recorded here so the list is honest, and
+            as a guide for anyone who wants to pick it up.
+          </p>
+        </div>
+
+        <h3 class="sub">ID3</h3>
+        <ul class="bullets">
+          <li><code>processRules</code> removes syntax tokens from rules but does not prune preconditions by validation accuracy, so rule post-pruning is missing.</li>
+          <li>Attribute names are fixed to the PlayTennis schema in <code>TreeService.attrs</code>, so other datasets would need code changes.</li>
+        </ul>
+
+        <h3 class="sub">Neural network</h3>
+        <ul class="bullets">
+          <li><code>train()</code> sets a local <code>epocs = 300</code>, which overrides the epochs you send.</li>
+          <li>The frontend sends <code>epochs</code> and <code>activation</code>, but <code>NetworkRequest</code> expects <code>epocs</code> and <code>activationFunction</code>, so those two settings never reach the backend. Learning rate, momentum, hidden layers and neurons per layer do bind correctly. The Tanh, ReLU and GELU options in the dropdown are not implemented either way.</li>
+          <li>Output-layer biases are initialized but never updated.</li>
+          <li>Features are not normalized, and training examples are not shuffled between epochs.</li>
+        </ul>
+
+        <h3 class="sub">Genetic algorithm</h3>
+        <ul class="bullets">
+          <li>The backend always loads <code>Tennis-Train.txt</code> and ignores <code>trainFile</code> and <code>testFile</code> from the request.</li>
+          <li><code>SinglePointCrossover</code> and <code>TwoPointCrossover</code> assume both parents have the same length, but the initial population mixes 5-rule and 6-rule hypotheses. They also change the parent arrays in place, which can alter survivors that were selected into both pools. The other two crossovers work on copies and don't have this problem.</li>
+          <li>Migration edges are drawn in the UI but never sent to the backend, so islands evolve independently. <code>/ga/getHypothesisStats</code> is a placeholder that returns &ldquo;Coming Soon&rdquo;.</li>
+        </ul>
+
+        <h3 class="sub">Platform</h3>
+        <ul class="bullets">
+          <li>Models are held in server memory (a singleton and static fields), and <code>System.out</code> is swapped globally during training. The app is single-user: concurrent training requests would interfere with each other.</li>
+          <li>The Dockerfile copies only <code>pom.xml</code> and <code>src/</code>. ID3 data is on the classpath and works in the container, but the NN and GA data files in <code>Backend/</code> would need to be copied in, or moved to <code>resources/</code>.</li>
+          <li>The frontend's API base (<code>http://localhost:8080</code>) is hard-coded on each page. A Vite environment variable (<code>import.meta.env.VITE_API_URL</code>) would make deployment easier.</li>
+        </ul>
+      </section>
+
+      <section id="run" class="block" aria-labelledby="run-title">
+        <h2 id="run-title">Running it locally</h2>
+        <pre class="codeblock" tabindex="0"><code># Backend (from Backend/, so relative dataset paths resolve)
+./mvnw spring-boot:run            # -&gt; http://localhost:8080
+
+# Frontend
+cd Frontend
+npm install
+npm run dev                       # -&gt; http://localhost:5173</code></pre>
+        <p class="note" style="margin-top: 0">
+          Open <code>http://localhost:5173/ML_Cards</code>, then choose <strong>ID3</strong>,
+          <strong>Neural Networks</strong> or <strong>Genetic Algorithms</strong>.
+        </p>
+      </section>
+
+      <section id="references" class="block" aria-labelledby="references-title">
+        <h2 id="references-title">References</h2>
+        <ol class="refs">
+          <li>
+            Tom M. Mitchell. <cite>Machine Learning.</cite> McGraw-Hill, 1997. Chapters 3 (Decision Tree Learning), 4
+            (Artificial Neural Networks) and 9 (Genetic Algorithms).
+            <span class="ref-links"><a href="http://www.cs.cmu.edu/~tom/mlbook.html" target="_blank" rel="noopener noreferrer">Book page</a></span>
+          </li>
+          <li>
+            J. R. Quinlan. <cite>Induction of Decision Trees.</cite> Machine Learning 1(1), 1986. (ID3)
+          </li>
+          <li>
+            Rumelhart, Hinton, Williams. <cite>Learning Representations by Back-Propagating Errors.</cite> Nature 323, 1986.
+          </li>
+          <li>
+            DeJong, Spears, Gordon. <cite>Using Genetic Algorithms for Concept Learning.</cite> Machine Learning 13, 1993. (GABIL)
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/#work">&larr; Back to all projects</a>
+    </footer>
+
+  </body>
+</html>

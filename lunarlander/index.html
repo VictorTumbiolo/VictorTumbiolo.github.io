@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Lunar Lander with TD3: a Twin Delayed DDPG agent in PyTorch learns to land a spacecraft in a continuous-control environment, with experiments on episode length, exploration noise and learning rate."
+    />
+    <title>Lunar Lander with TD3</title>
+    <script type="module" crossorigin src="/assets/lunarlander-BHcTkLTX.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/projects-D6KBgP7A.js">
+    <link rel="modulepreload" crossorigin href="/assets/project-page-YFq_ndGV.js">
+    <link rel="stylesheet" crossorigin href="/assets/projects-BDO5pT66.css">
+  </head>
+  <body>
+    <a class="skip" href="#problem">Skip to content</a>
+
+    <header class="site-header">
+      <a class="brand" href="/" data-profile-name>Home</a>
+      <nav aria-label="Primary">
+        <a href="/#work">All projects</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="project-hero" aria-labelledby="page-title">
+        <a class="back" href="/#work">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M12 8H4M7.5 4.5L4 8l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+          All projects
+        </a>
+        <p class="eyebrow">Project &middot; Continuous-control RL &middot; PyTorch</p>
+        <h1 id="page-title">Landing a Spacecraft with TD3</h1>
+        <p class="lede">
+          A <strong>Twin Delayed DDPG</strong> agent learns to touch down softly on the pad in
+          <code>LunarLanderContinuous-v3</code>. The interesting part wasn't getting it to land. It was
+          getting it to stop <em>hovering</em>, and the length of an episode turned out to be the lever.
+        </p>
+        <div class="actions">
+          <a class="button" href="#playback">Watch the landers</a>
+          <a class="button secondary" href="#results">See the results</a>
+        </div>
+        <dl class="facts">
+          <div><dt>Algorithm</dt><dd>TD3 (actor-critic)</dd></div>
+          <div><dt>Actions</dt><dd>2, continuous</dd></div>
+          <div><dt>Training</dt><dd>1,500 episodes</dd></div>
+          <div><dt>Solved at</dt><dd>200 avg. over 100 episodes</dd></div>
+          <div><dt>Best result</dt><dd>279.4 avg. reward</dd></div>
+        </dl>
+      </section>
+
+      <nav class="toc" aria-label="On this page">
+        <a href="#problem">The problem</a>
+        <a href="#playback">Playback</a>
+        <a href="#algorithm">Algorithm</a>
+        <a href="#training">Training</a>
+        <a href="#results">Results</a>
+        <a href="#repo">The repo</a>
+        <a href="#run">Run it</a>
+        <a href="#references">References</a>
+      </nav>
+
+      <section id="problem" class="block" aria-labelledby="problem-title">
+        <h2 id="problem-title">The problem: soft landing</h2>
+        <div class="prose">
+          <p>
+            Learn a control policy that lands on a designated pad, uses fuel sparingly and doesn't crash.
+            The action space is continuous, so the agent has to output precise thrust levels instead of
+            choosing from a few engine commands. That is why a continuous-control actor-critic method like
+            TD3 is a good fit. The task counts as <strong>solved</strong> when the average reward is at
+            least <strong>200 over 100 consecutive evaluation episodes</strong>.
+          </p>
+        </div>
+
+        <h3 class="sub">Environment</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Environment table">
+          <table class="data-table">
+            <tbody>
+              <tr><th scope="row">Environment</th><td><code>LunarLanderContinuous-v3</code> (Gymnasium, Box2D physics)</td></tr>
+              <tr><th scope="row">Settings</th><td><code>continuous=True</code>, <code>gravity=-10.0</code>, <code>enable_wind=False</code></td></tr>
+              <tr><th scope="row">State (8-dim)</th><td>x and y position, x and y velocity, angle, angular velocity, left-leg contact (0/1), right-leg contact (0/1)</td></tr>
+              <tr><th scope="row">Action (2-dim)</th><td>Each in <code>[-1, 1]</code>: main engine throttle and side thruster</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Reward shaping</h3>
+        <ul class="bullets">
+          <li>Positive reward for moving toward the pad and staying upright.</li>
+          <li>Reward for each leg that touches the ground.</li>
+          <li>A small penalty for firing the engines, so fuel use costs something.</li>
+          <li>A large penalty (<b class="neg">&minus;100</b>) for crashing, and a bonus of about <b class="pos">+100</b> for coming to rest.</li>
+        </ul>
+
+        <h3 class="sub">The hovering problem</h3>
+        <div class="prose">
+          <p>
+            Staying in the air costs very little, so the agent can learn to dodge the &minus;100 crash by
+            hovering and never collect the +100 landing bonus. Episodes that end positive but under about 100
+            are usually this behavior. It was the main challenge in the project, and the episode-length
+            experiment targets it directly.
+          </p>
+        </div>
+
+        <h3 class="sub">What the experiments vary</h3>
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Episode length</h3>
+            <p>Maximum steps per episode: 250, 500 or 1000. This is the experiment shown on this page.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Exploration noise</h3>
+            <p>Initial noise level, and whether it decays over training.</p>
+          </li>
+          <li class="ghost" style="--c: var(--fg)">
+            <h3>Actor learning rate</h3>
+            <p>1e-4 baseline against 5e-4 and 5e-5, alone and combined with 500-step episodes.</p>
+          </li>
+        </ul>
+      </section>
+
+      <section id="playback" class="block" aria-labelledby="playback-title">
+        <h2 id="playback-title">Three horizons, side by side</h2>
+        <p class="section-lede">
+          Each video is the best saved actor from a model trained with a different episode limit, shown for
+          25 consecutive episodes. All three were recorded with a 500-step cap, so the clips differ only in
+          what each policy learned. They loop while they're on screen.
+        </p>
+
+        <article class="playback">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="608"
+            height="400"
+            style="--vw: 600px"
+            aria-label="Playback of 25 consecutive landings by the model trained with a 1000-step episode limit"
+          >
+            <source src="/lunarlander/playback/1000s.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>1000 steps <code>Baseline</code></h3>
+            <p>Plenty of time to land, and plenty to dawdle.</p>
+            <dl class="stats">
+              <div><dt>Eval mean</dt><dd>252.5</dd></div>
+              <div><dt>Min / max</dt><dd>&minus;26.4 / 318.6</dd></div>
+              <div><dt>Below 200</dt><dd>7 of 100</dd></div>
+            </dl>
+            <p class="note">Converges fastest, but a long limit allows long, fuel-burning hovers. Those are the dips in its evaluation chart.</p>
+          </div>
+        </article>
+
+        <article class="playback">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="608"
+            height="400"
+            style="--vw: 600px"
+            aria-label="Playback of 25 consecutive landings by the model trained with a 500-step episode limit"
+          >
+            <source src="/lunarlander/playback/500s.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>500 steps <code>HP_Steps_Per_Episode/500</code></h3>
+            <p>Enough time to land, not enough to waste.</p>
+            <dl class="stats">
+              <div><dt>Eval mean</dt><dd>271.4</dd></div>
+              <div><dt>Min / max</dt><dd>232.0 / 313.8</dd></div>
+              <div><dt>Below 200</dt><dd>0 of 100</dd></div>
+            </dl>
+            <p class="note">Converges a little more slowly than 1000 steps but is the most consistent, with no dips.</p>
+          </div>
+        </article>
+
+        <article class="playback">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="608"
+            height="400"
+            style="--vw: 600px"
+            aria-label="Playback of 25 consecutive episodes by the model trained with a 250-step episode limit, which hovers instead of landing"
+          >
+            <source src="/lunarlander/playback/250s.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>250 steps <code>HP_Steps_Per_Episode/250</code></h3>
+            <p>The failure case, and the clearest picture of hovering.</p>
+            <dl class="stats">
+              <div><dt>Eval mean</dt><dd>102.6</dd></div>
+              <div><dt>Min / max</dt><dd>57.3 / 164.5</dd></div>
+              <div><dt>Below 200</dt><dd>100 of 100</dd></div>
+            </dl>
+            <p class="note">It never learns to land. It avoids crashing by staying aloft, so it gets a modest positive reward and never takes the landing bonus. In the clip it keeps flying until the step cap ends each episode.</p>
+          </div>
+        </article>
+      </section>
+
+      <section id="algorithm" class="block" aria-labelledby="algorithm-title">
+        <h2 id="algorithm-title">The algorithm: TD3</h2>
+        <div class="prose">
+          <p>
+            TD3 (Fujimoto et al., 2018) is an off-policy, model-free actor-critic method that improves on
+            DDPG (Lillicrap et al., 2015) with three changes, all in <code>TD3Agent.py</code>.
+          </p>
+        </div>
+
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Clipped double Q-learning</h3>
+            <p>
+              Two critics are trained. The bootstrap target uses <code>min(Q1_target, Q2_target)</code>,
+              which reduces overestimation bias.
+            </p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Delayed policy updates</h3>
+            <p>
+              The critics update every step. The actor and the target networks update only every
+              <code>policy_delay = 2</code> critic steps.
+            </p>
+          </li>
+          <li class="ghost" style="--c: var(--fg)">
+            <h3>Target policy smoothing</h3>
+            <p>
+              Clipped Gaussian noise is added to the target actor's action when computing the target Q-value,
+              so the policy can't exploit sharp spikes in the Q-function.
+            </p>
+          </li>
+        </ul>
+        <div class="prose" style="margin-top: 16px">
+          <p>
+            Around those three, the agent uses <strong>experience replay</strong> (capacity 1e6) with uniform
+            random minibatches, and <strong>soft target updates</strong> for the actor and both critics:
+            <code>target = tau*param + (1-tau)*target</code>.
+          </p>
+        </div>
+
+        <h3 class="sub">The two losses</h3>
+        <pre class="codeblock" tabindex="0"><code>Critic target:  y = r + (1 - done) * gamma * min(Q1', Q2')(s', a')
+Actor loss:     -Q1(s, actor(s)).mean()</code></pre>
+
+        <h3 class="sub">Networks <code>actor.py</code> <code>critic.py</code></h3>
+        <pre class="codeblock" tabindex="0"><code>Actor:   state (8)        -&gt; 256 -&gt; 256 -&gt; 2   LayerNorm + LeakyReLU per hidden layer, tanh output scaled by max_action
+Critic:  state + action (10) -&gt; 256 -&gt; 256 -&gt; 1   same structure, state and action concatenated at the input</code></pre>
+      </section>
+
+      <section id="training" class="block" aria-labelledby="training-title">
+        <h2 id="training-title">Parameters and design choices</h2>
+
+        <h3 class="sub">Agent <code>TD3Agent.py</code></h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Agent hyperparameters table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Parameter</th><th scope="col">Value</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Discount (gamma)</th><td><code>0.99</code></td></tr>
+              <tr><th scope="row">Soft update (tau)</th><td><code>0.005</code></td></tr>
+              <tr><th scope="row">Target policy noise</th><td><code>0.2</code> (std), clipped at <code>0.5</code></td></tr>
+              <tr><th scope="row">Policy delay</th><td>2</td></tr>
+              <tr><th scope="row">Actor optimizer</th><td>Adam, learning rate <code>1e-4</code> (baseline; edited by hand for the learning-rate experiments)</td></tr>
+              <tr><th scope="row">Critic optimizer</th><td>Adam, learning rate <code>1e-3</code>, one optimizer over both critics</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Training loop <code>Driver.py</code></h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Training loop table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Parameter</th><th scope="col">Value</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Training episodes</th><td>1,500</td></tr>
+              <tr><th scope="row">Batch size</th><td>256</td></tr>
+              <tr><th scope="row">Warm-up</th><td>10,000 transitions with uniformly random actions before any learning</td></tr>
+              <tr><th scope="row">Exploration noise</th><td>Gaussian, initial std <code>0.1</code>, multiplied by <code>0.9991</code> per episode, floor <code>0.05</code></td></tr>
+              <tr><th scope="row">Model selection</th><td>Save the actor whenever the 100-episode moving average reaches a new best</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Design choices</h3>
+        <ul class="bullets">
+          <li><strong>A slower actor than critic</strong> (1e-4 against 1e-3) keeps the policy from chasing inaccurate early value estimates.</li>
+          <li><strong>LayerNorm</strong> in the hidden layers is for training stability.</li>
+          <li><strong>A 10k-step random warm-up</strong> fills the buffer with varied transitions before gradient updates start.</li>
+          <li><strong>Saving the best 100-episode-average actor,</strong> not the last one, guards against late-training regressions.</li>
+          <li><strong>Shortening the episode limit</strong> is used as a way to stop the agent from hovering forever.</li>
+        </ul>
+      </section>
+
+      <section id="results" class="block" aria-labelledby="results-title">
+        <h2 id="results-title">Results</h2>
+        <p class="section-lede">
+          Training is judged on a 100-episode moving average. The final policy is judged on 100 consecutive
+          noise-free evaluation episodes. Below are the training and evaluation rewards for each episode
+          limit, then the full set of experiments.
+        </p>
+
+        <h3 class="sub">1000 steps (baseline)</h3>
+        <div class="charts">
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/lunarlander/charts/1000s_training.png"
+                width="3600"
+                height="1800"
+                loading="lazy"
+                decoding="async"
+                alt="Training reward per episode for the 1000-step model over 1500 episodes. Early rewards are very negative, down to about minus 1200. The 100-episode moving average climbs from about minus 250 at episode 100 to above 200 by episode 600, then stays near 250."
+              />
+            </div>
+            <figcaption><strong>Training rewards.</strong> Unstable and strongly negative early, then a quick climb between about episodes 200 and 600 and a plateau above 200.</figcaption>
+          </figure>
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/lunarlander/charts/1000s_eval.png"
+                width="3600"
+                height="1800"
+                loading="lazy"
+                decoding="async"
+                alt="Evaluation reward over 100 episodes for the 1000-step model. Most episodes score between 240 and 320. Seven episodes fall well below 200, with the lowest slightly negative."
+              />
+            </div>
+            <figcaption><strong>Evaluation rewards.</strong> Mostly 240 to 300. The occasional dips are small and positive, which points to hovering rather than crashing.</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub">500 steps</h3>
+        <div class="charts">
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/lunarlander/charts/500s_training.png"
+                width="1000"
+                height="500"
+                loading="lazy"
+                decoding="async"
+                alt="Training reward per episode for the 500-step model over 1500 episodes. The 100-episode moving average starts near minus 200, rises through zero around episode 250, and reaches about 270 by episode 1100."
+              />
+            </div>
+            <figcaption><strong>Training rewards.</strong> A slower rise than with 1000 steps, but a higher and steadier plateau.</figcaption>
+          </figure>
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/lunarlander/charts/500s_eval.png"
+                width="1000"
+                height="500"
+                loading="lazy"
+                decoding="async"
+                alt="Evaluation reward over 100 episodes for the 500-step model. Every episode scores between about 232 and 314, with no failures."
+              />
+            </div>
+            <figcaption><strong>Evaluation rewards.</strong> All 100 episodes between 232 and 314. No dips.</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub">250 steps</h3>
+        <div class="charts">
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/lunarlander/charts/250s_training.png"
+                width="1000"
+                height="500"
+                loading="lazy"
+                decoding="async"
+                alt="Training reward per episode for the 250-step model over 1500 episodes. The 100-episode moving average rises from about minus 300 and levels off near 100, never approaching 200."
+              />
+            </div>
+            <figcaption><strong>Training rewards.</strong> The average improves, then flattens near 100, well under the solved threshold.</figcaption>
+          </figure>
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/lunarlander/charts/250s_eval.png"
+                width="1000"
+                height="500"
+                loading="lazy"
+                decoding="async"
+                alt="Evaluation reward over 100 episodes for the 250-step model. Rewards range from about 57 to 165 and none reach 200."
+              />
+            </div>
+            <figcaption><strong>Evaluation rewards.</strong> Between 57 and 165, so every episode misses the bar. This is the hovering signature.</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub">All experiments</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Evaluation results table">
+          <table class="data-table results">
+            <thead>
+              <tr>
+                <th scope="col">Experiment</th>
+                <th scope="col" class="num">Eval mean</th>
+                <th scope="col" class="num">Std dev</th>
+                <th scope="col" class="num">Min</th>
+                <th scope="col" class="num">Max</th>
+                <th scope="col" class="num">Episodes &lt; 200</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">Baseline (steps 1000, actor lr 1e-4, noise 0.1 with decay)</th><td class="num">252.5</td><td class="num">69.67</td><td class="num">&minus;26.4</td><td class="num">318.6</td><td class="num">7</td></tr>
+              <tr><th scope="row">Steps = 500</th><td class="num">271.4</td><td class="num">17.61</td><td class="num">232.0</td><td class="num">313.8</td><td class="num"><b class="best">0</b></td></tr>
+              <tr><th scope="row">Steps = 250</th><td class="num">102.6</td><td class="num">25.67</td><td class="num">57.3</td><td class="num">164.5</td><td class="num">100</td></tr>
+              <tr><th scope="row">Noise 0.1, no decay</th><td class="num">270.8</td><td class="num">51.02</td><td class="num">&minus;169.9</td><td class="num">316.0</td><td class="num">3</td></tr>
+              <tr><th scope="row">Noise 0.2, with decay</th><td class="num">258.4</td><td class="num">44.66</td><td class="num">&minus;5.2</td><td class="num">306.1</td><td class="num">3</td></tr>
+              <tr><th scope="row">Actor lr 5e-4</th><td class="num">277.7</td><td class="num">22.09</td><td class="num">184.3</td><td class="num">319.5</td><td class="num">1</td></tr>
+              <tr><th scope="row">Actor lr 5e-4, steps 500</th><td class="num"><b class="best">279.4</b></td><td class="num"><b class="best">16.56</b></td><td class="num"><b class="best">240.3</b></td><td class="num"><b class="best">324.1</b></td><td class="num"><b class="best">0</b></td></tr>
+              <tr><th scope="row">Actor lr 5e-5</th><td class="num">258.0</td><td class="num">75.03</td><td class="num">&minus;208.0</td><td class="num">321.3</td><td class="num">8</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          Each row is 100 noise-free evaluation episodes. <strong>Bold</strong> marks the best value in each
+          column: highest for mean, min and max, lowest for std dev and for failures.
+          <strong>Episodes &lt; 200</strong> counts single episodes that scored under the solved bar of 200. It
+          is not a pass or fail on the average, which is why a run can average above 250 and still log a few
+          misses. Each experiment changes one setting and compares against the baseline, so the baseline row is the
+          reference for all three.
+        </p>
+
+        <h3 class="sub">Findings</h3>
+        <ul class="bullets">
+          <li>
+            <strong>Episode length mattered most.</strong> 1000 steps converges fastest but allows long
+            hovers. 500 is the best trade-off, with no evaluation dips. 250 never learns to land and averages
+            about 103.
+          </li>
+          <li>
+            <strong>Exploration noise mattered little.</strong> All three configurations converge to roughly
+            the same level, so TD3 is fairly robust to noise on this task. Noise 0.2 learns fastest early but
+            is noisier at the plateau, and noise 0.1 with decay learns slowest.
+          </li>
+          <li>
+            <strong>A higher actor learning rate helped.</strong> 5e-4 learns faster and reaches higher
+            rewards. Combined with 500 steps it gave the most consistent evaluation, with no failures. The
+            lower rates (1e-4 and 5e-5) track each other and show several dips.
+          </li>
+          <li>
+            <strong>Every configuration except 250 steps</strong> clears the 200 threshold on average.
+          </li>
+          <li><strong>Future work:</strong> compare against DDPG to see whether TD3's extra complexity is needed here.</li>
+        </ul>
+      </section>
+
+      <section id="repo" class="block" aria-labelledby="repo-title">
+        <h2 id="repo-title">What each file does</h2>
+
+        <h3 class="sub">Core training code</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Core files table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>TD3Agent.py</code></th><td>The <code>TD3Agent</code> class: actor, twin critics, target networks, optimizers, <code>select_action</code>, <code>soft_update</code> and <code>train</code> (critic update, delayed actor update, target smoothing).</td></tr>
+              <tr><th scope="row"><code>actor.py</code></th><td>The <code>Actor</code> network.</td></tr>
+              <tr><th scope="row"><code>critic.py</code></th><td>The <code>Critic</code> network (Q-function).</td></tr>
+              <tr><th scope="row"><code>replay_buffer.py</code></th><td><code>ReplayBuffer</code>: a preallocated circular numpy buffer with <code>add</code> and <code>sample</code>, which returns torch tensors on the device.</td></tr>
+              <tr><th scope="row"><code>Driver.py</code></th><td>The main training script. Builds the environment, agent and buffer, runs 1,500 episodes, logs rewards, saves the best actor, plots training, then loops forever rendering the best model.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Testing and visualization</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Testing files table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>100_consecutive_test.py</code></th><td>Loads a saved actor and runs 100 evaluation episodes without noise (up to 1000 steps each). Prints the rewards and final average, writes a log file and plots them.</td></tr>
+              <tr><th scope="row"><code>display_model.py</code></th><td>Loads a saved actor and renders episodes live in a window, forever. <code>T_MAX</code> sets the steps per episode.</td></tr>
+              <tr><th scope="row"><code>save_model_videos.py</code></th><td>Records 25 consecutive episodes (<code>T_MAX = 500</code>) for each of three models and writes <code>&lt;model&gt;_Playback.mp4</code> files. These are the videos on this page. Needs <code>imageio</code> and <code>imageio-ffmpeg</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Data processing and plotting</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Plotting files table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>One_File_Data_Processor.py</code></th><td>Plots one run's training rewards with a 100-episode moving average.</td></tr>
+              <tr><th scope="row"><code>One_file_Evaluation_processor.py</code></th><td>Plots one run's 100 evaluation rewards.</td></tr>
+              <tr><th scope="row"><code>data_conglomerator.py</code></th><td>Overlays the moving-average training curves of several runs from <code>*_training_rewards.txt</code> files in one directory.</td></tr>
+              <tr><th scope="row"><code>evaluation_conglomerator.py</code></th><td>Overlays the evaluation curves of several runs from <code>*_evaluation_rewards.txt</code> files.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Data, models and docs</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Data folders table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>Baseline/</code></th><td>The baseline model <code>1000s_best_lander_actor.pth</code>, training log, plots and evaluation log.</td></tr>
+              <tr><th scope="row"><code>HP_Steps_Per_Episode/</code></th><td>Models, logs and plots for the episode-length experiment (250 and 500).</td></tr>
+              <tr><th scope="row"><code>HP_Exploration_Strategy/</code></th><td>The same, for the exploration experiment (<code>0_1_No_Decay</code>, <code>0_2_With_Decay</code>).</td></tr>
+              <tr><th scope="row"><code>HP_Actor_Learning_Rate/</code></th><td>The same, for the learning-rate experiment (<code>5e-4</code>, <code>5e-4_t500</code>, <code>5e-5</code>).</td></tr>
+              <tr><th scope="row"><code>data_manipulation/</code></th><td>Copies of the logs renamed so the conglomerators can read them, plus the combined comparison plots.</td></tr>
+              <tr><th scope="row"><code>*_Playback.mp4</code></th><td>Videos produced by <code>save_model_videos.py</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">How they fit together</h3>
+        <pre class="codeblock" tabindex="0"><code>actor.py, critic.py, replay_buffer.py  -&gt;  TD3Agent.py  -&gt;  Driver.py
+Driver.py  -&gt;  training_rewards.txt, best_lander_actor.pth
+
+best_lander_actor.pth  -&gt;  100_consecutive_test.py  -&gt;  evaluation_rewards.txt
+                       -&gt;  display_model.py
+                       -&gt;  save_model_videos.py</code></pre>
+        <ul class="bullets">
+          <li><code>Driver.py</code> is the only script that trains.</li>
+          <li>The three testing and visualization scripts need only <code>actor.py</code> and a saved <code>.pth</code> file.</li>
+          <li>The plotting scripts read plain-text logs and never touch the models.</li>
+        </ul>
+      </section>
+
+      <section id="run" class="block" aria-labelledby="run-title">
+        <h2 id="run-title">Running it</h2>
+
+        <h3 class="sub">Setup</h3>
+        <p class="section-lede">Python 3 with <code>torch</code>, <code>gymnasium[box2d]</code>, <code>numpy</code> and <code>matplotlib</code>. The video script also needs <code>imageio</code> and <code>imageio-ffmpeg</code>.</p>
+        <pre class="codeblock" tabindex="0"><code>pip install torch "gymnasium[box2d]" numpy matplotlib imageio imageio-ffmpeg</code></pre>
+
+        <h3 class="sub">Train</h3>
+        <ol class="steps">
+          <li>Open <code>Driver.py</code> and set <code>directory_prefix</code> to an existing output folder. The best model is saved to <code>&lt;directory_prefix&gt;/best_lander_actor.pth</code>.</li>
+          <li>Uncomment the logging lines if you want the files. They are off by default so the script doesn't write files on its own.</li>
+          <li>Run it. It trains for 1,500 episodes, shows the training plot (close it to continue), then renders the best model in an endless loop. Stop it with Ctrl+C.</li>
+        </ol>
+        <pre class="codeblock" tabindex="0"><code>python Driver.py</code></pre>
+
+        <h3 class="sub">Evaluate over 100 episodes</h3>
+        <p class="section-lede">In <code>100_consecutive_test.py</code>, put a <code>.pth</code> path in the last line and real paths for the log file and the plot. It prints each reward and the average.</p>
+        <pre class="codeblock" tabindex="0"><code>python 100_consecutive_test.py</code></pre>
+
+        <h3 class="sub">Watch a model</h3>
+        <p class="section-lede">Set <code>MODEL_PATH</code> in <code>display_model.py</code>. Episodes render in a window until you stop it.</p>
+        <pre class="codeblock" tabindex="0"><code>python display_model.py</code></pre>
+
+        <h3 class="sub">Save videos</h3>
+        <p class="section-lede">Writes one mp4 per listed model into the current folder.</p>
+        <pre class="codeblock" tabindex="0"><code>python save_model_videos.py</code></pre>
+
+        <h3 class="sub">Make plots</h3>
+        <p class="section-lede">
+          For a single run, set the data path and output name in <code>One_File_Data_Processor.py</code> (training)
+          or <code>One_file_Evaluation_processor.py</code> (evaluation). To compare runs, put files named
+          <code>&lt;prefix&gt;_training_rewards.txt</code> or <code>&lt;prefix&gt;_evaluation_rewards.txt</code> in one folder,
+          set <code>data_directory</code> and the output name in the matching conglomerator, and uncomment the
+          <code>color_map</code> and <code>parse_label</code> block for your experiment.
+        </p>
+      </section>
+
+      <section id="references" class="block" aria-labelledby="references-title">
+        <h2 id="references-title">References</h2>
+        <ol class="refs">
+          <li>
+            Fujimoto, van Hoof, Meger.
+            <cite>Addressing Function Approximation Error in Actor-Critic Methods.</cite> ICML 2018. (TD3)
+            <span class="ref-links"><a href="https://arxiv.org/abs/1802.09477" target="_blank" rel="noopener noreferrer">arXiv</a></span>
+          </li>
+          <li>
+            Lillicrap, Hunt, Pritzel, Heess, Erez, Tassa, Silver, Wierstra.
+            <cite>Continuous Control with Deep Reinforcement Learning.</cite> 2015. (DDPG)
+            <span class="ref-links"><a href="https://arxiv.org/abs/1509.02971" target="_blank" rel="noopener noreferrer">arXiv</a></span>
+          </li>
+          <li>
+            Towers et al.
+            <cite>Gymnasium: A Standard Interface for Reinforcement Learning Environments.</cite> 2024.
+            <span class="ref-links"><a href="https://gymnasium.farama.org/environments/box2d/lunar_lander/" target="_blank" rel="noopener noreferrer">Lunar Lander docs</a></span>
+          </li>
+          <li>
+            Sutton and Barto. <cite>Reinforcement Learning: An Introduction.</cite>
+            <span class="ref-links"><a href="http://incompleteideas.net/book/the-book-2nd.html" target="_blank" rel="noopener noreferrer">Book</a></span>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/#work">&larr; Back to all projects</a>
+    </footer>
+
+  </body>
+</html>

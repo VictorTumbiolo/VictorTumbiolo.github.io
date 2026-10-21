@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="MAPPO for Cooperative Overcooked: two agents learn to cook and deliver onion soup together, trained with Multi-Agent PPO."
+    />
+    <title>MAPPO for Overcooked</title>
+    <script type="module" crossorigin src="/assets/overcooked-t817Swah.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/projects-D6KBgP7A.js">
+    <link rel="modulepreload" crossorigin href="/assets/project-page-YFq_ndGV.js">
+    <link rel="stylesheet" crossorigin href="/assets/projects-BDO5pT66.css">
+  </head>
+  <body>
+    <a class="skip" href="#problem">Skip to content</a>
+
+    <header class="site-header">
+      <a class="brand" href="/" data-profile-name>Home</a>
+      <nav aria-label="Primary">
+        <a href="/#work">All projects</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="project-hero" aria-labelledby="page-title">
+        <a class="back" href="/#work">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M12 8H4M7.5 4.5L4 8l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+          All projects
+        </a>
+        <p class="eyebrow">Project &middot; Multi-agent RL &middot; PyTorch</p>
+        <h1 id="page-title">MAPPO for Cooperative Overcooked</h1>
+        <p class="lede">
+          Two agents learn to cook and deliver onion soup together. They are trained with
+          <strong>Multi-Agent PPO</strong>: a centralized critic during training, and fully decentralized
+          actors at execution time.
+        </p>
+        <div class="actions">
+          <a class="button" href="#playback">Watch the agents</a>
+          <a class="button secondary" href="#results">See the results</a>
+        </div>
+        <dl class="facts">
+          <div><dt>Agents</dt><dd>2, fully cooperative</dd></div>
+          <div><dt>Algorithm</dt><dd>MAPPO (CTDE)</dd></div>
+          <div><dt>Episode</dt><dd>400 steps</dd></div>
+          <div><dt>Training</dt><dd>5M steps per layout</dd></div>
+          <div><dt>Result</dt><dd>8 to 12 soups per episode</dd></div>
+        </dl>
+      </section>
+
+      <section class="belt-section" aria-labelledby="belt-title">
+        <div class="belt-head">
+          <div>
+            <h2 id="belt-title">Every Overcooked-AI layout</h2>
+            <p>The kitchens the environment ships with. The three tagged <b>Trained</b> are the ones the agents learned.</p>
+          </div>
+          <button class="chip-button" id="belt-toggle" type="button" aria-pressed="false">Pause belt</button>
+        </div>
+        <div class="belt" id="belt">
+          <ul class="belt-track"></ul>
+        </div>
+      </section>
+
+      <nav class="toc" aria-label="On this page">
+        <a href="#problem">The problem</a>
+        <a href="#playback">Playback</a>
+        <a href="#algorithm">Algorithm</a>
+        <a href="#training">Training</a>
+        <a href="#results">Results</a>
+        <a href="#repo">The repo</a>
+        <a href="#run">Run it</a>
+        <a href="#references">References</a>
+      </nav>
+
+      <section id="problem" class="block" aria-labelledby="problem-title">
+        <h2 id="problem-title">The problem: Overcooked</h2>
+        <div class="prose">
+          <p>
+            <a href="https://github.com/HumanCompatibleAI/overcooked_ai" target="_blank" rel="noopener noreferrer">Overcooked-AI</a>
+            (Carroll et al., 2019) is a cooperative gridworld based on the Overcooked video games. Two
+            chefs share a small kitchen and produce as many soups as possible before time runs out.
+          </p>
+        </div>
+
+        <h3 class="sub">Making one soup</h3>
+        <ol class="steps">
+          <li>Pick up an onion from a dispenser and drop it in a pot.</li>
+          <li>Repeat until the pot holds three onions. It then starts cooking on its own.</li>
+          <li>Pick up a dish, collect the finished soup from the pot with it, and carry it to the serving window.</li>
+        </ol>
+
+        <h3 class="sub">Setup used here</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Environment setup table">
+          <table class="data-table">
+            <tbody>
+              <tr><th scope="row">Agents</th><td>2, fully cooperative, shared goal</td></tr>
+              <tr><th scope="row">Recipe</th><td>Single recipe, 3 onions (the <code>*_o_1order</code> style layouts)</td></tr>
+              <tr><th scope="row">Episode length</th><td>400 timesteps (fixed horizon)</td></tr>
+              <tr><th scope="row">Actions</th><td>6, discrete: up, down, left, right, stay, interact (pick up / place / deliver)</td></tr>
+              <tr><th scope="row">Observation</th><td>96-dimensional featurized vector per agent (<code>featurize_state_mdp</code>): object locations, both agents' positions, pot and soup progress</td></tr>
+              <tr><th scope="row">Sparse reward</th><td>+20 per delivered soup, shared by both agents</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">What makes it interesting</h3>
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Sparse reward</h3>
+            <p>
+              A soup is only worth +20 once a full sequence of steps is done, so the agents have to
+              discover the whole pipeline: onions, pot, dish, pickup, delivery.
+            </p>
+          </li>
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Coordination</h3>
+            <p>
+              Both chefs share counters, pots and walkways. Good play means staying out of each other's way
+              and splitting the work.
+            </p>
+          </li>
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>A changing partner</h3>
+            <p>
+              From one agent's point of view the other agent is part of the environment, and it is learning
+              at the same time. Centralized training is aimed at exactly this.
+            </p>
+          </li>
+        </ul>
+      </section>
+
+      <section id="playback" class="block" aria-labelledby="playback-title">
+        <h2 id="playback-title">Watching the learned policy</h2>
+        <p class="section-lede">
+          One full 400-step episode for each trained layout. Both chefs run the same shared actor and see
+          only their own observation, with no communication between them. The videos loop while they're on
+          screen.
+        </p>
+
+        <article class="playback">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="384"
+            height="304"
+            style="--vw: 480px"
+            aria-label="Playback of the trained agents in the Cramped Room layout"
+          >
+            <source src="/overcooked/playback/cramped_room_playback.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>Cramped Room <code>cramped_room</code></h3>
+            <p>Small and highly constrained, with few alternative paths.</p>
+            <dl class="stats">
+              <div><dt>Avg. soups</dt><dd>11.00</dd></div>
+              <div><dt>Std dev</dt><dd>0.00</dd></div>
+              <div><dt>Min / max</dt><dd>11 / 11</dd></div>
+            </dl>
+            <p class="note">The most consistent layout: zero variance across 100 games. The small space leaves one clear way to play.</p>
+          </div>
+        </article>
+
+        <article class="playback">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="384"
+            height="384"
+            style="--vw: 380px"
+            aria-label="Playback of the trained agents in the Coordination Ring layout"
+          >
+            <source src="/overcooked/playback/coordination_ring_playback.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>Coordination Ring <code>coordination_ring</code></h3>
+            <p>Compact ring with two pots. Both chefs have symmetric access to everything.</p>
+            <dl class="stats">
+              <div><dt>Avg. soups</dt><dd>11.88</dd></div>
+              <div><dt>Std dev</dt><dd>0.47</dd></div>
+              <div><dt>Min / max</dt><dd>9 / 12</dd></div>
+            </dl>
+            <p class="note">The highest throughput. The symmetric layout lets both chefs run the whole pipeline, and both pots get used.</p>
+          </div>
+        </article>
+
+        <article class="playback">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="608"
+            height="384"
+            style="--vw: 600px"
+            aria-label="Playback of the trained agents in the Counter Circuit layout"
+          >
+            <source src="/overcooked/playback/counter_circuit_o_1order_playback.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>Counter Circuit <code>counter_circuit_o_1order</code></h3>
+            <p>Larger, with obstacles that separate onions, dishes and pots, so travel distances are longer.</p>
+            <dl class="stats">
+              <div><dt>Avg. soups</dt><dd>7.99</dd></div>
+              <div><dt>Std dev</dt><dd>0.39</dd></div>
+              <div><dt>Min / max</dt><dd>5 / 9</dd></div>
+            </dl>
+            <p class="note">Shows emergent division of labor: one agent tends to run the pots while the other supplies ingredients. Nothing in the environment forces this; the agents settle on it themselves.</p>
+          </div>
+        </article>
+      </section>
+
+      <section id="algorithm" class="block" aria-labelledby="algorithm-title">
+        <h2 id="algorithm-title">The algorithm: MAPPO</h2>
+        <div class="prose">
+          <p>
+            MAPPO is PPO adapted to cooperative multi-agent problems using <strong>centralized training,
+            decentralized execution (CTDE)</strong>.
+          </p>
+        </div>
+
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Actor <span>Decentralized</span></h3>
+            <p>
+              Takes only an agent's own 96-dim observation and outputs a distribution over the 6 actions.
+              That is all that's needed at execution time, so the agents need no communication.
+            </p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Critic <span>Centralized, training only</span></h3>
+            <p>
+              Sees the <em>joint</em> state, both observations concatenated into a 192-dim vector, and
+              estimates the value. Conditioning on both agents gives the learning signal a full view of
+              the kitchen.
+            </p>
+          </li>
+          <li class="ghost" style="--c: var(--fg)">
+            <h3>Parameter sharing</h3>
+            <p>
+              One actor network is shared by both agents, each feeding in its own observation. Both chefs
+              have the same abilities, so a single policy can play either role.
+            </p>
+          </li>
+          <li class="ghost" style="--c: var(--muted-fg)">
+            <h3>PPO core</h3>
+            <p>Clipped surrogate policy loss, value loss, entropy bonus, and Generalized Advantage Estimation (GAE).</p>
+          </li>
+        </ul>
+
+        <figure class="diagram">
+          <div class="diagram-scroll" tabindex="0" role="region" aria-label="MAPPO architecture diagram (scrollable)">
+            <svg viewBox="0 0 760 340" width="760" height="340" role="img" aria-labelledby="diagram-title diagram-desc">
+              <title id="diagram-title">MAPPO: centralized training, decentralized execution</title>
+              <desc id="diagram-desc">
+                Each agent's 96-dimensional observation goes into one shared actor, which outputs that
+                agent's action. During training only, the two observations are concatenated into a
+                192-dimensional joint state that feeds a centralized critic. The critic's value estimates
+                become advantages that update the actor.
+              </desc>
+              <defs>
+                <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M0 0L10 5L0 10z" class="dg-head" />
+                </marker>
+              </defs>
+
+              <rect class="dg-band" x="0" y="215" width="760" height="125" />
+              <text class="dg-tag" x="16" y="236">TRAINING ONLY</text>
+              <text class="dg-tag" x="16" y="18">EXECUTION AND TRAINING</text>
+
+              <g class="dg-box"><rect x="24" y="44" width="150" height="48" /><text x="99" y="64" text-anchor="middle">Agent 1 obs</text><text class="dg-sub" x="99" y="81" text-anchor="middle">96-d</text></g>
+              <g class="dg-box"><rect x="24" y="116" width="150" height="48" /><text x="99" y="136" text-anchor="middle">Agent 2 obs</text><text class="dg-sub" x="99" y="153" text-anchor="middle">96-d</text></g>
+
+              <g class="dg-box dg-main"><rect x="270" y="52" width="210" height="104" /><text x="375" y="92" text-anchor="middle">Shared actor</text><text class="dg-sub" x="375" y="112" text-anchor="middle">96 &rarr; 256 &rarr; 128 &rarr; 6</text><text class="dg-sub" x="375" y="131" text-anchor="middle">same weights for both agents</text></g>
+
+              <g class="dg-box"><rect x="576" y="44" width="150" height="48" /><text x="651" y="64" text-anchor="middle">Action 1</text><text class="dg-sub" x="651" y="81" text-anchor="middle">1 of 6</text></g>
+              <g class="dg-box"><rect x="576" y="116" width="150" height="48" /><text x="651" y="136" text-anchor="middle">Action 2</text><text class="dg-sub" x="651" y="153" text-anchor="middle">1 of 6</text></g>
+
+              <path class="dg-line" d="M174 68H270" marker-end="url(#arrow)" />
+              <path class="dg-line" d="M174 140H270" marker-end="url(#arrow)" />
+              <path class="dg-line" d="M480 68H576" marker-end="url(#arrow)" />
+              <path class="dg-line" d="M480 140H576" marker-end="url(#arrow)" />
+
+              <path class="dg-line dg-dash" d="M24 68H10V275H24" marker-end="url(#arrow)" />
+              <path class="dg-line dg-dash" d="M24 140H10" />
+              <text class="dg-sub" x="20" y="196" text-anchor="start">concatenate</text>
+
+              <g class="dg-box"><rect x="24" y="250" width="150" height="48" /><text x="99" y="270" text-anchor="middle">Joint state</text><text class="dg-sub" x="99" y="287" text-anchor="middle">192-d</text></g>
+              <g class="dg-box dg-main"><rect x="270" y="244" width="210" height="60" /><text x="375" y="271" text-anchor="middle">Centralized critic</text><text class="dg-sub" x="375" y="289" text-anchor="middle">192 &rarr; 256 &rarr; 128 &rarr; 1</text></g>
+              <g class="dg-box"><rect x="576" y="250" width="150" height="48" /><text x="651" y="270" text-anchor="middle">Value</text><text class="dg-sub" x="651" y="287" text-anchor="middle">V(s), feeds GAE</text></g>
+
+              <path class="dg-line dg-dash" d="M174 274H270" marker-end="url(#arrow)" />
+              <path class="dg-line dg-dash" d="M480 274H576" marker-end="url(#arrow)" />
+              <path class="dg-line dg-dash" d="M651 250V196H375V156" marker-end="url(#arrow)" />
+              <text class="dg-sub" x="513" y="190" text-anchor="middle">advantages update the actor</text>
+            </svg>
+          </div>
+          <figcaption>
+            Execution uses only the top row. The dashed path exists during training and is discarded afterward.
+          </figcaption>
+        </figure>
+
+        <h3 class="sub">Why MAPPO</h3>
+        <div class="prose">
+          <p>
+            It was chosen over independent PPO because the centralized critic accounts for the other agent
+            when estimating value, and over value-decomposition methods like QMIX because Overcooked's
+            coordination comes from sequential interaction over shared resources rather than value that
+            factors neatly across agents.
+          </p>
+        </div>
+
+        <h3 class="sub">Network <code>model.py</code></h3>
+        <pre class="codeblock" tabindex="0"><code>Actor:   obs (96)          -&gt; Linear 256 -&gt; ReLU -&gt; Linear 128 -&gt; ReLU -&gt; Linear 6   (action logits)
+Critic:  global state (192) -&gt; Linear 256 -&gt; ReLU -&gt; Linear 128 -&gt; ReLU -&gt; Linear 1   (value)</code></pre>
+
+        <h3 class="sub">Update step <code>PPO_Agent.py</code></h3>
+        <p class="section-lede">Run after every 400 environment steps, which is one full episode.</p>
+        <ol class="steps">
+          <li><strong>Collect the rollout buffer:</strong> local obs, global state, actions, old log-probs, rewards, values and done flags.</li>
+          <li><strong>Compute GAE advantages,</strong> and value targets as advantage plus value.</li>
+          <li><strong>Normalize advantages</strong> to zero mean and unit variance.</li>
+          <li>
+            <strong>Run 3 gradient epochs</strong> over the batch, minimizing
+            <code>L = L_clip + 0.5 * L_value - ent_coef * entropy</code>
+            with the policy ratio clipped to <code>[1 - 0.2, 1 + 0.2]</code>.
+          </li>
+          <li><strong>Decay the entropy coefficient</strong> and clear the buffer.</li>
+        </ol>
+      </section>
+
+      <section id="training" class="block" aria-labelledby="training-title">
+        <h2 id="training-title">Parameters and design choices</h2>
+
+        <h3 class="sub">Hyperparameters</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Hyperparameters table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Parameter</th><th scope="col">Value</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Optimizer</th><td>Adam, learning rate <code>3e-4</code></td></tr>
+              <tr><th scope="row">PPO clip</th><td><code>0.2</code></td></tr>
+              <tr><th scope="row">Discount (gamma)</th><td><code>0.99</code></td></tr>
+              <tr><th scope="row">GAE lambda</th><td><code>0.95</code></td></tr>
+              <tr><th scope="row">Value loss coefficient</th><td><code>0.5</code></td></tr>
+              <tr><th scope="row">Entropy coefficient</th><td>Starts <code>0.05</code>, multiplied by <code>0.9995</code> each update, floor <code>0.001</code></td></tr>
+              <tr><th scope="row">Update frequency</th><td>Every 400 environment steps (one full episode)</td></tr>
+              <tr><th scope="row">Gradient epochs per update</th><td>3</td></tr>
+              <tr><th scope="row">Training length</th><td>5,000,000 environment steps per layout (about 12,500 episodes)</td></tr>
+              <tr><th scope="row">Device</th><td>CPU, roughly 1.5 hours per layout</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Reward design</h3>
+        <p class="section-lede">
+          Shaped rewards supplement the sparse delivery reward to guide the agents through the soup pipeline.
+        </p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Reward design table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Event</th><th scope="col" class="num">Reward</th><th scope="col">Reasoning</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Soup delivered</th><td class="num"><b class="pos">+20</b> sparse, shared</td><td>Highest value, so completing soups is the priority.</td></tr>
+              <tr><th scope="row">Onion placed in pot</th><td class="num"><b class="pos">+5</b> shaped, per agent</td><td>Happens about 3 times per soup, so it is weighted above dish pickup.</td></tr>
+              <tr><th scope="row">Soup picked up</th><td class="num"><b class="pos">+6</b> shaped, per agent</td><td>Rewards the handoff from cooking to delivery.</td></tr>
+              <tr><th scope="row">Dish picked up</th><td class="num"><b class="pos">+2</b> shaped, per agent</td><td>Kept small so it guides behavior without becoming a goal of its own.</td></tr>
+              <tr><th scope="row">Every timestep</th><td class="num"><b class="neg">&minus;0.001</b> per agent</td><td>Mild pressure to be efficient.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prose" style="margin-top: 16px">
+          <p>
+            The <strong>sparse reward is shared</strong> to keep the agents cooperative, while
+            <strong>shaped rewards are credited per agent</strong> (<code>shaped_r_by_agent</code>) to give
+            each one localized feedback about what it did.
+          </p>
+        </div>
+
+        <h3 class="sub">Other design choices</h3>
+        <ul class="bullets">
+          <li><strong>Exploration</strong> comes from sampling the stochastic policy plus the entropy bonus, which decays over training. No extra action noise is added.</li>
+          <li><strong>Checkpointing.</strong> A 100-episode running average of soups delivered is tracked during training, and the checkpoint with the best running average is saved and used for evaluation.</li>
+          <li><strong>One model per layout,</strong> with identical algorithm, reward structure and hyperparameters, so differences between layouts come from the environment rather than the tuning.</li>
+          <li><strong>Local-only actors at test time.</strong> Each chef uses only its own observation. The critic is only used in training.</li>
+        </ul>
+      </section>
+
+      <section id="results" class="block" aria-labelledby="results-title">
+        <h2 id="results-title">Results</h2>
+        <p class="section-lede">
+          Evaluation: 100 episodes per layout, horizon 400, using the best saved checkpoint.
+        </p>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Evaluation results table">
+          <table class="data-table results">
+            <thead>
+              <tr>
+                <th scope="col">Layout</th>
+                <th scope="col" class="num">Soups</th>
+                <th scope="col" class="num">Optimal potting</th>
+                <th scope="col" class="num">Soup pickups</th>
+                <th scope="col" class="num">Soup drops</th>
+                <th scope="col" class="num">Potting / soup</th>
+                <th scope="col" class="num">Pickups / soup</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">Cramped Room</th><td class="num">11.00</td><td class="num">36.00</td><td class="num">11.00</td><td class="num">0.00</td><td class="num">3.27</td><td class="num">1.00</td></tr>
+              <tr><th scope="row">Coordination Ring</th><td class="num">11.88</td><td class="num">39.01</td><td class="num">11.99</td><td class="num">0.01</td><td class="num">3.28</td><td class="num">1.01</td></tr>
+              <tr><th scope="row">Counter Circuit</th><td class="num">7.99</td><td class="num">29.54</td><td class="num">8.14</td><td class="num">0.00</td><td class="num">3.70</td><td class="num">1.02</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          <strong>Optimal onion potting</strong> is the <code>optimal_onion_potting</code> event count from
+          Overcooked-AI's game statistics, used as a proxy for coordination, since a soup needs three onions
+          placed into a shared pot. <strong>Soup pickups</strong> measure workflow efficiency: how smoothly
+          cooking transitions to delivery. <strong>Soup drops</strong> count soups dropped without being
+          delivered.
+        </p>
+
+        <h3 class="sub">Training and evaluation</h3>
+        <div class="charts">
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/overcooked/charts/soup_running_avg.png"
+                width="2060"
+                height="1407"
+                loading="lazy"
+                decoding="async"
+                alt="Line chart of the 100-episode running average of soups over about 12,500 training episodes. Cramped Room rises first and plateaus near 11, Coordination Ring rises later and fluctuates around 10 to 12, and Counter Circuit starts later still and settles between 7 and 9. A dot marks each layout's peak."
+              />
+            </div>
+            <figcaption>
+              <strong>100-episode running average of soups during training.</strong> Dots mark each layout's
+              peak, which is the checkpoint that was saved.
+            </figcaption>
+          </figure>
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/overcooked/charts/testing_soups_plot.png"
+                width="1688"
+                height="1361"
+                loading="lazy"
+                decoding="async"
+                alt="Line chart of soups delivered in each of 100 evaluation episodes. Cramped Room is a flat line at 11. Coordination Ring sits at 12 with a few dips to 9 through 11. Counter Circuit sits at 8 with a few dips to 7 and spikes to 9."
+              />
+            </div>
+            <figcaption><strong>Soups delivered over 100 evaluation episodes.</strong></figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub">Coordination and efficiency metrics</h3>
+        <div class="charts">
+          <figure class="barchart">
+            <figcaption><strong>Absolute</strong> averages per episode</figcaption>
+            <ul class="legend" aria-hidden="true">
+              <li><span class="sw potting"></span>Optimal potting</li>
+              <li><span class="sw pickup"></span>Soup pickups</li>
+            </ul>
+            <div class="bar-group">
+              <p class="bar-label">Cramped Room</p>
+              <div class="bar"><span class="sr">Optimal potting</span><i class="fill potting" style="--v: 90%"></i><b>36.00</b></div>
+              <div class="bar"><span class="sr">Soup pickups</span><i class="fill pickup" style="--v: 27.5%"></i><b>11.00</b></div>
+            </div>
+            <div class="bar-group">
+              <p class="bar-label">Coordination Ring</p>
+              <div class="bar"><span class="sr">Optimal potting</span><i class="fill potting" style="--v: 97.5%"></i><b>39.01</b></div>
+              <div class="bar"><span class="sr">Soup pickups</span><i class="fill pickup" style="--v: 30%"></i><b>11.99</b></div>
+            </div>
+            <div class="bar-group">
+              <p class="bar-label">Counter Circuit</p>
+              <div class="bar"><span class="sr">Optimal potting</span><i class="fill potting" style="--v: 73.9%"></i><b>29.54</b></div>
+              <div class="bar"><span class="sr">Soup pickups</span><i class="fill pickup" style="--v: 20.4%"></i><b>8.14</b></div>
+            </div>
+          </figure>
+          <figure class="barchart">
+            <figcaption><strong>Per soup delivered</strong></figcaption>
+            <ul class="legend" aria-hidden="true">
+              <li><span class="sw potting"></span>Potting per soup</li>
+              <li><span class="sw pickup"></span>Pickups per soup</li>
+            </ul>
+            <div class="bar-group">
+              <p class="bar-label">Cramped Room</p>
+              <div class="bar"><span class="sr">Potting per soup</span><i class="fill potting" style="--v: 81.8%"></i><b>3.27</b></div>
+              <div class="bar"><span class="sr">Pickups per soup</span><i class="fill pickup" style="--v: 25%"></i><b>1.00</b></div>
+            </div>
+            <div class="bar-group">
+              <p class="bar-label">Coordination Ring</p>
+              <div class="bar"><span class="sr">Potting per soup</span><i class="fill potting" style="--v: 82%"></i><b>3.28</b></div>
+              <div class="bar"><span class="sr">Pickups per soup</span><i class="fill pickup" style="--v: 25.3%"></i><b>1.01</b></div>
+            </div>
+            <div class="bar-group">
+              <p class="bar-label">Counter Circuit</p>
+              <div class="bar"><span class="sr">Potting per soup</span><i class="fill potting" style="--v: 92.5%"></i><b>3.70</b></div>
+              <div class="bar"><span class="sr">Pickups per soup</span><i class="fill pickup" style="--v: 25.5%"></i><b>1.02</b></div>
+            </div>
+          </figure>
+        </div>
+
+        <h3 class="sub">Observations</h3>
+        <ul class="bullets">
+          <li>
+            <strong>Learning curves</strong> share the same shape: zero soups at first, a sharp rise once a
+            successful trajectory is found, then a plateau. Cramped Room converges fastest, then
+            Coordination Ring, then Counter Circuit, which has the largest state space.
+          </li>
+          <li><strong>Cramped Room</strong> is the most consistent, with zero variance across 100 games. The small space leaves one clear way to play.</li>
+          <li><strong>Coordination Ring</strong> has the highest throughput. Its symmetric layout lets both chefs run the whole pipeline, and both pots get used.</li>
+          <li><strong>Counter Circuit</strong> shows emergent <strong>division of labor</strong>: one agent tends to run the pots while the other supplies ingredients. Nothing in the environment forces this.</li>
+          <li><strong>Efficiency.</strong> Pickups per soup are about 1.0 in every layout, so the path from cooking to delivery is nearly lossless, and almost no soups are dropped. Potting per soup stays close to the 3 onions a soup requires.</li>
+        </ul>
+      </section>
+
+      <section id="repo" class="block" aria-labelledby="repo-title">
+        <h2 id="repo-title">What each file does</h2>
+        <p class="section-lede">Everything lives in the <code>MAPPO/</code> folder.</p>
+
+        <h3 class="sub">Core</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Core files table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>model.py</code></th><td>Defines <code>SharedActorCritic</code>, the network used by both agents: a shared-weight actor (96 &rarr; 256 &rarr; 128 &rarr; 6 action logits) and a centralized critic (192 &rarr; 256 &rarr; 128 &rarr; 1 value).</td></tr>
+              <tr><th scope="row"><code>PPO_Agent.py</code></th><td>The PPO update logic MAPPO is built on. <code>PPOUpdater</code> runs GAE advantage estimation, the clipped policy loss, value loss, and decaying entropy bonus. <code>RolloutBuffer</code> stores each step's local obs, global state, action, reward, log-prob, value and done flag.</td></tr>
+              <tr><th scope="row"><code>Driver_W_Save.py</code></th><td>The training script. Builds the environment for a chosen layout, steps both agents with the shared actor, applies the shared sparse reward plus per-agent shaped rewards and time penalty, triggers a PPO update every 400 steps, writes a training log, and saves the model whenever the 100-episode running average hits a new best. Set the layout in <code>main()</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Evaluation and visualization</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Evaluation and visualization files table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>Agent_Test_Visual.py</code></th><td>Loads a trained model, plays one episode with both agents, prints the reward and soup count, saves the episode as an <code>.mp4</code>, and then replays it in a pygame window. Choose the layout and model by setting <code>MODEL_PATH</code> and <code>LAYOUT</code> at the top.</td></tr>
+              <tr><th scope="row"><code>100_window_metric_test.py</code></th><td>Runs 100 evaluation episodes for a trained model and records soups delivered, optimal onion potting, soup pickups and soup drops. Writes a per-episode metrics file and a summary file (average, totals, std dev, min, max) to <code>testing_logs/</code>.</td></tr>
+              <tr><th scope="row"><code>Save_All_Videos.py</code></th><td>Loops over every layout shipped with Overcooked-AI and saves a PNG of each one's starting state to <code>layout_images/</code>, sized to that layout. These are the images in the belt above.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Charts</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Chart scripts table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>DISPLAY_TRAINING_RESULTS.py</code></th><td>Plots the 100-episode running average of soups for each layout from the training logs on one chart, marking each layout's peak. The log paths are listed in the <code>files</code> list at the top.</td></tr>
+              <tr><th scope="row"><code>DISPLAY_TESTING_RESULTS.py</code></th><td>Plots soups delivered per evaluation episode for each layout from the per-episode metrics logs. The paths are listed in the <code>files</code> dict at the top.</td></tr>
+              <tr><th scope="row"><code>METRIC_CHARTS.py</code></th><td>Draws the bar charts of optimal potting and soup pickups per layout, both as absolute averages and normalized per soup delivered. Values come from <code>testing_logs/metrics_compiled.txt</code>.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Data folders</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Data folders table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>models/</code></th><td>Trained weights (<code>.pth</code>), one per layout: <code>cramped_best_model.pth</code>, <code>ring_best_model.pth</code>, <code>counter_circuit_best_model.pth</code>.</td></tr>
+              <tr><th scope="row"><code>training_logs/</code></th><td>Per-episode training logs for each layout, with columns for episode, average reward, soups, and the 100-episode running average.</td></tr>
+              <tr><th scope="row"><code>testing_logs/</code></th><td>Per-episode and summary results from the 100-episode evaluations for each layout, plus <code>metrics_compiled.txt</code> combining the headline numbers.</td></tr>
+              <tr><th scope="row"><code>charts/</code></th><td>Generated figures.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="run" class="block" aria-labelledby="run-title">
+        <h2 id="run-title">Running it</h2>
+
+        <h3 class="sub">Setup <span class="aside">Python 3.11</span></h3>
+        <pre class="codeblock" tabindex="0"><code>python -m venv .venv
+.venv\Scripts\activate
+pip install torch "numpy&lt;2" "gym&lt;0.26" overcooked_ai pygame matplotlib imageio imageio-ffmpeg</code></pre>
+        <p class="note">Versions confirmed working: <code>overcooked-ai 1.1.0</code>, <code>gym 0.25.2</code>, <code>numpy 1.26.4</code>, <code>pygame 2.6.1</code>.</p>
+
+        <h3 class="sub">Watch a trained agent</h3>
+        <p class="section-lede">
+          Saves an mp4, then opens a pygame window. Pick the layout by editing <code>MODEL_PATH</code> and
+          <code>LAYOUT</code> at the top of the file.
+        </p>
+        <pre class="codeblock" tabindex="0"><code>cd MAPPO
+python Agent_Test_Visual.py</code></pre>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Layouts and weights table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Layout</th><th scope="col">Weights</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>cramped_room</code></th><td><code>models/cramped_best_model.pth</code></td></tr>
+              <tr><th scope="row"><code>coordination_ring</code></th><td><code>models/ring_best_model.pth</code></td></tr>
+              <tr><th scope="row"><code>counter_circuit_o_1order</code></th><td><code>models/counter_circuit_best_model.pth</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Evaluate over 100 episodes</h3>
+        <p class="section-lede">Set <code>MODEL_PATH</code>, <code>LAYOUT</code> and the output paths at the top.</p>
+        <pre class="codeblock" tabindex="0"><code>python 100_window_metric_test.py</code></pre>
+
+        <h3 class="sub">Train</h3>
+        <p class="section-lede">Set <code>layout</code> in <code>main()</code>. About 1.5 hours on CPU; writes checkpoints and logs.</p>
+        <pre class="codeblock" tabindex="0"><code>python Driver_W_Save.py</code></pre>
+
+        <h3 class="sub">Render layout images</h3>
+        <pre class="codeblock" tabindex="0"><code>python Save_All_Videos.py</code></pre>
+      </section>
+
+      <section id="references" class="block" aria-labelledby="references-title">
+        <h2 id="references-title">References</h2>
+        <ol class="refs">
+          <li>
+            Yu, Velu, Vinitsky, Gao, Wang, Bayen, Wu.
+            <cite>The Surprising Effectiveness of PPO in Cooperative Multi-Agent Games.</cite> NeurIPS 2022.
+            <span class="ref-links"><a href="https://proceedings.neurips.cc/paper_files/paper/2022/hash/9c1535a02f0ce079433344e14d910597-Abstract-Datasets_and_Benchmarks.html" target="_blank" rel="noopener noreferrer">NeurIPS</a></span>
+          </li>
+          <li>
+            Carroll, Shah, Ho, Griffiths, Seshia, Abbeel, Dragan.
+            <cite>On the Utility of Learning about Humans for Human-AI Coordination.</cite> NeurIPS 2019.
+            (Overcooked-AI)
+            <span class="ref-links">
+              <a href="https://arxiv.org/abs/1910.05789" target="_blank" rel="noopener noreferrer">arXiv</a>
+              <a href="https://github.com/HumanCompatibleAI/overcooked_ai" target="_blank" rel="noopener noreferrer">Code</a>
+            </span>
+          </li>
+          <li>
+            Lowe, Wu, Tamar, Harb, Abbeel, Mordatch.
+            <cite>Multi-Agent Actor-Critic for Mixed Cooperative-Competitive Environments.</cite> 2017.
+            <span class="ref-links"><a href="https://arxiv.org/abs/1706.02275" target="_blank" rel="noopener noreferrer">arXiv</a></span>
+          </li>
+          <li>
+            Foerster, Farquhar, Afouras, Nardelli, Whiteson.
+            <cite>Counterfactual Multi-Agent Policy Gradients.</cite> 2017.
+            <span class="ref-links"><a href="https://arxiv.org/abs/1705.08926" target="_blank" rel="noopener noreferrer">arXiv</a></span>
+          </li>
+          <li>
+            Schulman et al. <cite>Proximal Policy Optimization Algorithms.</cite> 2017.
+            <span class="ref-links"><a href="https://arxiv.org/abs/1707.06347" target="_blank" rel="noopener noreferrer">arXiv</a></span>
+          </li>
+          <li>
+            Sutton and Barto. <cite>Reinforcement Learning: An Introduction.</cite>
+            <span class="ref-links"><a href="http://incompleteideas.net/book/the-book-2nd.html" target="_blank" rel="noopener noreferrer">Book</a></span>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/#work">&larr; Back to all projects</a>
+    </footer>
+
+  </body>
+</html>
