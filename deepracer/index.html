@@ -1,0 +1,862 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="AWS DeepRacer, code-level: a Soft Actor-Critic agent written from scratch in PyTorch learns to race from stereo cameras and LiDAR, trained against a patched simulator in Docker."
+    />
+    <title>AWS DeepRacer in Code</title>
+    <script type="module" crossorigin src="/assets/deepracer-BHcTkLTX.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/projects-D6KBgP7A.js">
+    <link rel="modulepreload" crossorigin href="/assets/project-page-YFq_ndGV.js">
+    <link rel="stylesheet" crossorigin href="/assets/projects-BDO5pT66.css">
+  </head>
+  <body>
+    <a class="skip" href="#problem">Skip to content</a>
+
+    <header class="site-header">
+      <a class="brand" href="/" data-profile-name>Home</a>
+      <nav aria-label="Primary">
+        <a href="/#work">All projects</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="project-hero" aria-labelledby="page-title">
+        <a class="back" href="/#work">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M12 8H4M7.5 4.5L4 8l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+          All projects
+        </a>
+        <p class="eyebrow">Project &middot; Reinforcement learning &middot; PyTorch &middot; Docker</p>
+        <h1 id="page-title">AWS DeepRacer, Written as Code</h1>
+        <p class="lede">
+          A simulated 1/18-scale race car learns to drive laps from nothing but two camera images and a
+          LiDAR scan. The agent is a <strong>Soft Actor-Critic</strong> written from scratch in PyTorch, and
+          it talks to a patched DeepRacer simulator running in Docker. Everything the DeepRacer console
+          hides behind a Train button is code here.
+        </p>
+        <div class="actions">
+          <a class="button" href="#playback">Watch the laps</a>
+          <a class="button secondary" href="#console">Console vs. code</a>
+        </div>
+        <dl class="facts">
+          <div><dt>Algorithm</dt><dd>SAC, from scratch</dd></div>
+          <div><dt>Observations</dt><dd>Stereo cameras + LiDAR</dd></div>
+          <div><dt>Actions</dt><dd>Steering and speed, continuous</dd></div>
+          <div><dt>Tracks</dt><dd>3, one shared policy</dd></div>
+          <div><dt>Best model</dt><dd>2 of 3 tracks reliable</dd></div>
+        </dl>
+      </section>
+
+      <nav class="toc" aria-label="On this page">
+        <a href="#problem">The problem</a>
+        <a href="#console">Console vs. code</a>
+        <a href="#playback">Playback</a>
+        <a href="#algorithm">Algorithm</a>
+        <a href="#network">Network</a>
+        <a href="#training">Parameters</a>
+        <a href="#tracks">Tracks</a>
+        <a href="#results">Results</a>
+        <a href="#lessons">Lessons</a>
+        <a href="#docker">Docker</a>
+        <a href="#repo">The repo</a>
+        <a href="#references">References</a>
+      </nav>
+
+      <section id="problem" class="block" aria-labelledby="problem-title">
+        <h2 id="problem-title">The problem: drive fast, from sensors only</h2>
+        <div class="prose">
+          <p>
+            A simulated race car must drive laps around a closed track, as fast and as reliably as it can,
+            using only what its sensors show it. It is never told where it is, which way it faces or how
+            fast it is going, so the problem is <strong>partially observable</strong>.
+          </p>
+        </div>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Problem setup table">
+          <table class="data-table">
+            <tbody>
+              <tr><th scope="row">Observations</th><td>Two grayscale stereo camera images (120&times;160 each) and a 64-beam 360&deg; LiDAR scan. No position, heading, speed or map.</td></tr>
+              <tr><th scope="row">Actions</th><td>A continuous 2-vector: steering angle in [&minus;30&deg;, +30&deg;] and speed in [0.5, 0.7] m/s. The policy outputs values in [&minus;1, 1] and the simulator scales them.</td></tr>
+              <tr><th scope="row">Reward</th><td>Computed by a user-written function from privileged simulator state (<code>progress</code>, <code>distance_from_center</code>, <code>all_wheels_on_track</code>, <code>is_crashed</code>, &hellip;). The agent never sees that state, only the resulting number.</td></tr>
+              <tr><th scope="row">Episode ends</th><td><em>Terminated</em> on lap complete, crash, leaving the track or reversing. <em>Truncated</em> on time-up or when the car is immobilized.</td></tr>
+              <tr><th scope="row">Goal</th><td>One policy that completes laps on several different tracks, not one policy per track.</td></tr>
+              <tr><th scope="row">Race types</th><td>Time-Trial, Obstacle Avoidance (6 static obstacles) and Head-to-Bot (3 bot cars). The environment config supports all three. The agent work here is on Time-Trial.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">What makes it hard</h3>
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Expensive data</h3>
+            <p>Pixel input and a single, non-vectorizable simulator, so every transition is collected one at a time.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Different tracks</h3>
+            <p>Layouts with very different geometry, from wide sweepers to tight corners.</p>
+          </li>
+          <li class="ghost" style="--c: var(--fg)">
+            <h3>Exploitable reward</h3>
+            <p>A shaped reward is easy for an agent to game instead of actually racing.</p>
+          </li>
+          <li class="ghost" style="--c: var(--muted-fg)">
+            <h3>Forgetting</h3>
+            <p>Fine-tuning on a new track tends to make the policy forget the old one.</p>
+          </li>
+        </ul>
+      </section>
+
+      <section id="console" class="block" aria-labelledby="console-title">
+        <h2 id="console-title">How this differs from the DeepRacer console</h2>
+        <div class="prose">
+          <p>
+            The AWS DeepRacer console is a <strong>configure-and-click</strong> product. You pick a track and
+            sensors, define an action space, write a reward function, adjust a few hyperparameters and press
+            Train. The learning algorithm, the network and the training loop are fixed and hidden behind the
+            interface.
+          </p>
+          <p>
+            This project removes that layer. The simulator is the same, but everything the console hides is
+            now code.
+          </p>
+        </div>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Console versus repository comparison">
+          <table class="data-table results">
+            <thead>
+              <tr><th scope="col"></th><th scope="col">DeepRacer console</th><th scope="col">This project</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">Algorithm</th><td>A managed trainer (PPO, or the console's SAC option). You can't see or change the update rule.</td><td>A hand-written SAC: actor, twin critics, target networks, learned temperature, replay buffer and the full gradient-update loop.</td></tr>
+              <tr><th scope="row">Network</th><td>Chosen from presets (shallow or deep CNN).</td><td>A custom two-stream encoder (stereo CNN plus 1-D LiDAR CNN), LayerNorm, a shared feature head, and separate actor and critic heads.</td></tr>
+              <tr><th scope="row">Hyperparameters</th><td>A small menu: batch size, epochs, learning rate, entropy, discount, loss type, episodes per iteration.</td><td>Every knob: update cadence, updates per cycle, Polyak &tau;, target-entropy scale, &alpha; learning rate, gradient clipping, warmup policy, replay size.</td></tr>
+              <tr><th scope="row">Training loop</th><td>Iterations of "collect episodes, then train" run in the cloud.</td><td>An explicit per-step loop with random warmup, conditional checkpoints and custom logging.</td></tr>
+              <tr><th scope="row">Multi-track</th><td>One track per training job.</td><td>Tracks switch during a run by rewriting a config and restarting the simulator, with weighted sampling and warm-started policies.</td></tr>
+              <tr><th scope="row">Observations</th><td>Chosen from a list and consumed internally.</td><td>Raw arrays arrive in Python. You decide how to normalize, encode and fuse them.</td></tr>
+              <tr><th scope="row">Reward</th><td>A Python function.</td><td>The same kind of function, but evaluated client-side from an <code>info</code> dict that the patched simulator exposes.</td></tr>
+              <tr><th scope="row">Evaluation</th><td>Console evaluation runs.</td><td>Scripted: per-episode progress, lap time in steps, checkpoint comparison, GIF or video rendering, multi-track sweeps.</td></tr>
+              <tr><th scope="row">Experiment control</th><td>A cloud job per run.</td><td>Local, reproducible runs with seeds, TensorBoard, text logs and <code>.torch</code> checkpoints.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="prose" style="margin-top: 16px">
+          <p>
+            In short, the console is a <strong>settings panel for someone else's algorithm</strong>. This is an
+            <strong>RL research workspace</strong> where the algorithm, the network, the data pipeline and the
+            experiment design are all code. <code>agent_params.json</code> keeps the console's
+            <code>model_metadata.json</code> format because the simulator still reads it, but its
+            <code>neural_network</code> field is inherited and doesn't affect the custom network.
+          </p>
+        </div>
+      </section>
+
+      <section id="playback" class="block" aria-labelledby="playback-title">
+        <h2 id="playback-title">A completed lap, through the car's eyes</h2>
+        <p class="section-lede">
+          One completed lap on each track, by the final model with a deterministic policy. These are the
+          agent's actual inputs: the left and right stereo camera images, side by side. The videos loop while
+          they're on screen.
+        </p>
+
+        <article class="playback">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="640"
+            height="240"
+            style="--vw: 640px"
+            aria-label="Stereo camera view from one completed lap of AWS Summit Raceway"
+          >
+            <source src="/deepracer/playback/aws_summit.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>AWS Summit Raceway <code>Vegas_track</code></h3>
+            <p>Longer and more complex, with a mix of straights and corners.</p>
+            <dl class="stats">
+              <div><dt>Avg. progress</dt><dd>97.5%</dd></div>
+              <div><dt>Laps</dt><dd>5 / 6</dd></div>
+              <div><dt>Lap time</dt><dd>508 steps</dd></div>
+            </dl>
+          </div>
+        </article>
+
+        <article class="playback">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="640"
+            height="240"
+            style="--vw: 640px"
+            aria-label="Stereo camera view from one completed lap of A to Z Speedway"
+          >
+            <source src="/deepracer/playback/a_to_z.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>A to Z Speedway <code>reInvent2019_wide</code></h3>
+            <p>Wide lanes and sweeping curves. Forgiving, and it rewards smooth high-speed driving.</p>
+            <dl class="stats">
+              <div><dt>Avg. progress</dt><dd>100%</dd></div>
+              <div><dt>Laps</dt><dd>6 / 6</dd></div>
+              <div><dt>Lap time</dt><dd>382 steps</dd></div>
+            </dl>
+          </div>
+        </article>
+
+        <article class="playback">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="640"
+            height="240"
+            style="--vw: 640px"
+            aria-label="Stereo camera view from one completed lap of Smile Speedway"
+          >
+            <source src="/deepracer/playback/smile.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>Smile Speedway <code>reInvent2019_track</code></h3>
+            <p>Narrower, with tighter turns that need precise low-speed maneuvering.</p>
+            <dl class="stats">
+              <div><dt>Avg. progress</dt><dd>51.1%</dd></div>
+              <div><dt>Laps</dt><dd>1 / 6</dd></div>
+              <div><dt>Lap time</dt><dd>535 steps</dd></div>
+            </dl>
+            <p class="note">This lap is one of the few successes. On the other episodes the car left the track, with progress ranging from about 14% to 95%.</p>
+          </div>
+        </article>
+      </section>
+
+      <section id="algorithm" class="block" aria-labelledby="algorithm-title">
+        <h2 id="algorithm-title">The algorithm: Soft Actor-Critic</h2>
+        <div class="prose">
+          <p>
+            SAC is an off-policy, maximum-entropy actor-critic method for continuous control. It maximizes
+            expected return <strong>plus</strong> a policy-entropy bonus.
+          </p>
+        </div>
+        <pre class="codeblock" tabindex="0"><code>J(pi) = E[ sum_t r_t + alpha * H(pi(. | s_t)) ]</code></pre>
+
+        <h3 class="sub">Why SAC here</h3>
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Sample efficiency</h3>
+            <p>The simulator is one slow, non-vectorizable instance. Off-policy replay reuses every transition many times, which PPO can't.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Built-in exploration</h3>
+            <p>The entropy term keeps the policy stochastic, which matters when one policy must cope with several track shapes.</p>
+          </li>
+          <li class="ghost" style="--c: var(--fg)">
+            <h3>Stable value learning</h3>
+            <p>Twin critics with a min-target reduce overestimation bias. Soft target updates smooth the TD targets.</p>
+          </li>
+          <li class="ghost" style="--c: var(--muted-fg)">
+            <h3>Less tuning</h3>
+            <p>The entropy temperature &alpha; is learned automatically toward a target entropy.</p>
+          </li>
+        </ul>
+
+        <h3 class="sub">Components <code>sac_agent.py</code> <code>run.py</code></h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="SAC components table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row">Policy</th><td>Squashed Gaussian. The actor outputs <code>mean</code> and <code>log_std</code> (clamped to [&minus;20, 2]) and samples with the reparameterization trick, <code>a = tanh(mean + std&middot;&epsilon;)</code>, correcting the log-probability for the tanh squash.</td></tr>
+              <tr><th scope="row">Deterministic mode</th><td><code>a = tanh(mean)</code>, used for evaluation and for rendering the laps above.</td></tr>
+              <tr><th scope="row">Critics</th><td>Two Q-networks, each <code>[feature(128) + action(2)] &rarr; 256 &rarr; 256 &rarr; 1</code> with ReLU.</td></tr>
+              <tr><th scope="row">Targets</th><td>Target copies of both critics, updated by Polyak averaging with &tau; = 0.005.</td></tr>
+              <tr><th scope="row">TD target</th><td><code>y = r + &gamma;(1 &minus; done)&middot;( min(Q1', Q2')(s', a') &minus; &alpha;&middot;log &pi;(a'|s') )</code></td></tr>
+              <tr><th scope="row">Critic loss</th><td><code>MSE(Q1, y) + MSE(Q2, y)</code></td></tr>
+              <tr><th scope="row">Actor loss</th><td><code>E[ &alpha;&middot;log &pi;(a|s) &minus; min(Q1, Q2)(s, a) ]</code></td></tr>
+              <tr><th scope="row">Temperature</th><td>A learned <code>log_alpha</code> with loss <code>&minus;log_alpha &middot; (log &pi; + H_target)</code>.</td></tr>
+              <tr><th scope="row">Target entropy</th><td><code>action_dim &times; target_entropy_scale = 2 &times; (&minus;0.5) = &minus;1.0</code></td></tr>
+              <tr><th scope="row">Optimizers</th><td>Three Adam optimizers: actor, critic (plus encoder) and &alpha;.</td></tr>
+              <tr><th scope="row">Gradient clipping</th><td>Norm 0.5 on the Q1, Q2 and actor parameters.</td></tr>
+              <tr><th scope="row">Replay buffer</th><td>A circular numpy buffer of flattened observations, actions, rewards, next observations and done flags.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Design choices worth knowing</h3>
+        <ul class="bullets">
+          <li><strong>The encoder is trained by the critic loss only.</strong> The actor receives <em>detached</em> features, so policy gradients never reach the encoder. This keeps the shared visual representation stable.</li>
+          <li><strong>One shared encoder,</strong> with a LayerNorm and a 128-d feature head after it. Actor and critics read the same 128-d feature.</li>
+          <li><strong>Random warmup.</strong> The first 1,000 steps use uniform random actions. In the fine-tuning runs, warmup uses the <em>pretrained policy</em> instead, so the buffer isn't filled with random driving before gradient updates start.</li>
+          <li><strong>Batched, delayed updates.</strong> The loop collects <code>update_steps</code> transitions, then runs <code>updates_per_step</code> gradient steps in one burst, instead of one update per environment step.</li>
+          <li><strong>NaN guard.</strong> If a sampled action contains NaN, the run stops and dumps the encoder statistics, mean, log-std and &alpha;.</li>
+          <li><strong>Checkpointing.</strong> A checkpoint is saved after two consecutive completed laps (progress at least 99.5%). Fine-tuning runs also save every 2,500 steps, which allows model selection afterwards.</li>
+        </ul>
+      </section>
+
+      <section id="network" class="block" aria-labelledby="network-title">
+        <h2 id="network-title">Network and sensors</h2>
+
+        <h3 class="sub">Which sensors the agent uses</h3>
+        <p class="section-lede">
+          The platform offers more sensors than the agent needs. <code>agent_params.json</code> selects
+          <code>["STEREO_CAMERAS", "LIDAR"]</code>.
+        </p>
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Stereo cameras</h3>
+            <p>Two forward 120&times;160 grayscale images. They capture track edges and curvature, and the left and right pair provides depth cues.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>LiDAR</h3>
+            <p>64 radial distances over 360&deg;. Short-range proximity for walls, obstacles and bots, and it covers what the cameras can't see behind and beside the car.</p>
+          </li>
+        </ul>
+        <div class="prose" style="margin-top: 16px">
+          <p>
+            <strong>Not available to the policy:</strong> the car's x/y position, heading, speed, distance
+            from the centerline, track progress or waypoints. These exist inside the simulator and are visible
+            only to the reward function.
+          </p>
+        </div>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Sensor support table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Sensor</th><th scope="col">Gym wrapper</th><th scope="col">Shape</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>LIDAR</code></th><td>Supported, <strong>used</strong></td><td><code>(64,)</code></td></tr>
+              <tr><th scope="row"><code>STEREO_CAMERAS</code></th><td>Supported, <strong>used</strong></td><td><code>(2, 120, 160)</code>, uint8</td></tr>
+              <tr><th scope="row"><code>FRONT_FACING_CAMERA</code></th><td>Supported, not used</td><td><code>(3, 120, 160)</code>, uint8</td></tr>
+              <tr><th scope="row"><code>SECTOR_LIDAR</code></th><td>Declared, not implemented</td><td>&ndash;</td></tr>
+              <tr><th scope="row"><code>LEFT_CAMERA</code></th><td>Declared, not implemented</td><td>&ndash;</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Observation layout and pre-processing</h3>
+        <pre class="codeblock" tabindex="0"><code>[ LIDAR (64) | STEREO_CAMERAS (2 x 120 x 160 = 38,400) ]   -&gt;   38,464 floats</code></pre>
+        <ul class="bullets">
+          <li><strong>LiDAR:</strong> <code>nan_to_num</code> (NaN to 0, +inf to 1, &minus;inf to 0), then clamp to [0, 1]. This works because the simulated max range was patched to 1.0 m.</li>
+          <li><strong>Cameras:</strong> divide by 255 to get [0, 1].</li>
+        </ul>
+
+        <h3 class="sub">Encoder <code>transforms.py</code></h3>
+        <pre class="codeblock" tabindex="0"><code>Stereo camera encoder (-&gt; 96-d)
+  left / right (1x120x160)
+    -&gt; Conv2d(1-&gt;16, k4, s2) -&gt; LeakyReLU -&gt; Conv2d(16-&gt;8, k4, s2) -&gt; LeakyReLU   shared per-eye encoder
+    -&gt; concat along channels (16x28x38)
+    -&gt; Conv2d(16-&gt;16, k4, s2) -&gt; LeakyReLU -&gt; Conv2d(16-&gt;64, k4, s2) -&gt; LeakyReLU stereo fusion
+    -&gt; flatten (2,560) -&gt; Linear 96 -&gt; LeakyReLU
+
+LiDAR encoder (-&gt; 32-d)
+  (1x64) -&gt; Conv1d(1-&gt;16, k4, s2) -&gt; LeakyReLU -&gt; Conv1d(16-&gt;16, k4, s2) -&gt; LeakyReLU
+         -&gt; flatten (224) -&gt; Linear 32 -&gt; LeakyReLU
+
+Fusion
+  concat(camera 96, lidar 32) = 128 -&gt; LayerNorm(128) -&gt; Linear(128-&gt;128) + ReLU</code></pre>
+        <p class="note">
+          Weights use orthogonal initialization (gain &radic;2, bias 0.01). The activation is LeakyReLU in the
+          encoders and ReLU in the heads.
+        </p>
+
+        <h3 class="sub">Heads</h3>
+        <pre class="codeblock" tabindex="0"><code>actor:   128 -&gt; 256 -&gt; 256 -&gt; [mean(2), log_std(2)]
+critic:  (128 + 2) -&gt; 256 -&gt; 256 -&gt; 1        (x2, plus 2 target copies)</code></pre>
+      </section>
+
+      <section id="training" class="block" aria-labelledby="training-title">
+        <h2 id="training-title">Parameters and design choices</h2>
+
+        <h3 class="sub">Hyperparameters <code>hyper_params.yaml</code></h3>
+        <p class="section-lede">Current values, set for fine-tuning.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Hyperparameters table">
+          <table class="data-table">
+            <thead><tr><th scope="col">Parameter</th><th scope="col">Value</th><th scope="col">Notes</th></tr></thead>
+            <tbody>
+              <tr><th scope="row"><code>seed</code></th><td><code>42</code></td><td></td></tr>
+              <tr><th scope="row"><code>learning_rate</code></th><td><code>3e-5</code></td><td>Lowered for fine-tuning.</td></tr>
+              <tr><th scope="row"><code>alpha_lr</code></th><td><code>3e-5</code></td><td></td></tr>
+              <tr><th scope="row"><code>gamma</code></th><td><code>0.99</code></td><td></td></tr>
+              <tr><th scope="row"><code>batch_size</code></th><td><code>128</code></td><td></td></tr>
+              <tr><th scope="row"><code>replay_buffer_size</code></th><td><code>20,000</code></td><td></td></tr>
+              <tr><th scope="row"><code>learning_starts</code></th><td><code>1,000</code></td><td>Warmup steps before gradient updates.</td></tr>
+              <tr><th scope="row"><code>update_steps</code></th><td><code>256</code></td><td>Environment steps collected between update bursts.</td></tr>
+              <tr><th scope="row"><code>updates_per_step</code></th><td><code>64</code></td><td>Gradient steps per burst.</td></tr>
+              <tr><th scope="row"><code>polyak_tau</code></th><td><code>0.005</code></td><td></td></tr>
+              <tr><th scope="row"><code>target_entropy_scale</code></th><td><code>-0.5</code></td><td>Target entropy of &minus;1.0 for the 2-D action.</td></tr>
+              <tr><th scope="row"><code>total_timesteps</code></th><td><code>50,000</code></td><td></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          Training from scratch uses the defaults in <code>run.py</code> instead: batch 256, buffer 10,000,
+          50 update steps and 50 updates per step, learning rate and &alpha; learning rate 3e-4. Values in
+          <code>hyper_params.yaml</code> override them.
+        </p>
+
+        <h3 class="sub">How they changed across training phases</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Training phases table">
+          <table class="data-table results">
+            <thead><tr><th scope="col">Phase</th><th scope="col">Policy init</th><th scope="col">Learning rate</th><th scope="col">Warmup</th><th scope="col">Notes</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">1. Single-track pretraining</th><td>Random</td><td>3e-4</td><td>1,000 random steps</td><td>Batch 256, buffer 10k, 64 updates per 256 steps.</td></tr>
+              <tr><th scope="row">2. Multi-track curriculum</th><td>Best phase-1 checkpoint</td><td>~1e-4</td><td>Random</td><td>Updates per burst lowered to 64 to limit overfitting to a small mixed buffer.</td></tr>
+              <tr><th scope="row">3. Targeted fine-tuning</th><td>Phase-2 or pretrained checkpoint</td><td>3e-5</td><td><strong>Pretrained policy</strong></td><td>Heavily weighted sampling of AWS Summit Raceway, the hardest track. Favoring it traded away some Smile performance.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Reward function <code>reward_function.py</code></h3>
+        <p class="section-lede">Evaluated every step on the simulator's <code>reward_params</code>.</p>
+        <pre class="codeblock" tabindex="0"><code>if is_crashed:                 reward = -1.0
+if not all_wheels_on_track:    reward = 1e-3
+centering = 1.0 if dist &lt;= 0.10 * width
+            0.5 if dist &lt;= 0.25 * width
+            0.1 if dist &lt;= 0.50 * width
+            else return 1e-3
+progress_reward = sqrt(progress / 100)
+reward = 0.2 * centering + 0.8 * progress_reward</code></pre>
+        <ul class="bullets">
+          <li>The <strong>square root</strong> of progress is concave. It pays relatively more for early progress, so the agent isn't indifferent between "almost there" and "just started".</li>
+          <li><strong>Centering</strong> is a coarse three-level band. It is a small tie-breaker (20%) and doesn't dominate speed or progress.</li>
+          <li>The <strong>crash penalty</strong> (&minus;1) is the only negative reward. Everything else is positive, so surviving always beats ending the episode early.</li>
+          <li>An earlier variant with milestone bonuses at 25, 50, 75 and 100% progress is kept in comments. The final version dropped them and added the crash penalty.</li>
+        </ul>
+      </section>
+
+      <section id="tracks" class="block" aria-labelledby="tracks-title">
+        <h2 id="tracks-title">The three tracks</h2>
+        <p class="section-lede">All three are layouts bundled with the simulator, selected by <code>WORLD_NAME</code>.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Tracks table">
+          <table class="data-table results">
+            <thead><tr><th scope="col">Track</th><th scope="col">Simulator world</th><th scope="col">Character</th><th scope="col" class="num">Typical lap</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">A to Z Speedway</th><td class="nw"><code>reInvent2019_wide</code></td><td>Wide lanes, sweeping curves. Forgiving, and it rewards smooth high-speed driving.</td><td class="num">~375&ndash;400 steps</td></tr>
+              <tr><th scope="row">Smile Speedway</th><td class="nw"><code>reInvent2019_track</code></td><td>Narrower, with tighter turns. Needs precise low-speed maneuvering.</td><td class="num">~535 steps</td></tr>
+              <tr><th scope="row">AWS Summit Raceway</th><td class="nw"><code>Vegas_track</code></td><td>Longer and more complex, a mix of straights and corners. The most difficult track overall.</td><td class="num">~500&ndash;515 steps</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="prose" style="margin-top: 16px">
+          <p>
+            AWS Summit Raceway is the most difficult of the three. A to Z is wider and more forgiving, and
+            Smile asks for precise low-speed cornering where the other two reward speed. That conflict is
+            part of why a single policy struggles to be good at all three.
+          </p>
+          <p>
+            The track is changed by editing <code>WORLD_NAME</code> in <code>environment_params.yaml</code>, or
+            by passing <code>-W &lt;world&gt;</code> to the restart script. The simulator must restart for it to
+            take effect. Start positions are randomized and the driving direction alternates, which stops the
+            agent from memorizing one start.
+          </p>
+        </div>
+      </section>
+
+      <section id="results" class="block" aria-labelledby="results-title">
+        <h2 id="results-title">Training strategy and results</h2>
+
+        <h3 class="sub">1. Single-track pretraining on A to Z</h3>
+        <p class="section-lede">
+          The 100-episode average progress rose from about 10% at 5k steps to over 80% by about 45k steps.
+          &alpha; decayed from about 0.93 to 0.05.
+        </p>
+        <div class="charts">
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/deepracer/charts/train_progress.png"
+                width="1573"
+                height="773"
+                loading="lazy"
+                decoding="async"
+                alt="Scatter of track progress per training episode with a 100-episode average line. Early episodes score 5 to 30 percent and the average sits near 10. After about 10,000 steps many episodes reach 100 percent and the average climbs steadily to about 87 percent near 50,000 steps, then holds between 80 and 88 until about 100,000 steps."
+              />
+            </div>
+            <figcaption><strong>Episode progress during training.</strong> Each dot is an episode, and most late episodes complete the lap. The average plateaus in the low 80s because a few failures keep dragging it down.</figcaption>
+          </figure>
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/deepracer/charts/train_qloss_alpha.png"
+                width="1573"
+                height="773"
+                loading="lazy"
+                decoding="async"
+                alt="Q-loss and entropy temperature alpha during training. Alpha starts near 0.93 and falls smoothly to about 0.05 by 15,000 steps, then stays low. Q-loss stays under 2 early, then becomes noisy with spikes up to 18 after about 50,000 steps."
+              />
+            </div>
+            <figcaption><strong>Q-loss and entropy temperature (&alpha;).</strong> The automatic tuning drives &alpha; down quickly as the policy gets more certain. Q-loss gets spikier once the car starts finishing laps and the data gets more varied.</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub">2. Checkpoint selection on an unseen track</h3>
+        <p class="section-lede">Candidates were evaluated on Smile Speedway, which they hadn't trained on.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Checkpoint selection table">
+          <table class="data-table results">
+            <thead><tr><th scope="col">Checkpoint (step)</th><th scope="col" class="num">Min progress</th><th scope="col" class="num">Std dev</th><th scope="col" class="num">Laps / 20</th><th scope="col" class="num">Eps &gt; 50%</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">14,618</th><td class="num">37.8</td><td class="num">23.8</td><td class="num">3</td><td class="num">8</td></tr>
+              <tr><th scope="row">28,904</th><td class="num">65.3</td><td class="num">12.7</td><td class="num">7</td><td class="num">10</td></tr>
+              <tr><th scope="row">28,030</th><td class="num">61.5</td><td class="num">15.5</td><td class="num">7</td><td class="num">10</td></tr>
+              <tr><th scope="row">97,499</th><td class="num">1.5</td><td class="num">32.5</td><td class="num">6</td><td class="num">8</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          Over 50 episodes, step 28,030 completed more laps (42 against 34) with lower variance than 28,904, so
+          it became the base for later training. The longest-trained checkpoint (97,499) generalized worst.
+        </p>
+
+        <h3 class="sub">3. Forgetting, and the multi-track fix</h3>
+        <div class="prose">
+          <p>
+            Fine-tuning on a single new track led to <strong>catastrophic forgetting</strong>. After training
+            only on AWS Summit Raceway, the same model completed only 4 of 10 laps on A to Z Speedway.
+          </p>
+          <p>
+            The fix was a <strong>multi-track curriculum</strong>: tracks are re-drawn by weighted random
+            sampling every 2 episodes, the container restarts into the chosen world, and training continues
+            from a pretrained checkpoint on one shared replay buffer. That produced the strongest overall
+            model, <code>14008_post_multi_train</code>. A later targeted fine-tune on Smile (lower learning
+            rate, pretrained-policy warmup, 75% sampling weight) gave mixed results.
+          </p>
+        </div>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Isolated versus multi-track table">
+          <table class="data-table results">
+            <thead><tr><th scope="col">Strategy</th><th scope="col">Track</th><th scope="col" class="num">Min progress</th><th scope="col" class="num">Std dev</th><th scope="col" class="num">Laps</th><th scope="col" class="num">Eps &gt; 50%</th><th scope="col" class="num">Episodes</th></tr></thead>
+            <tbody>
+              <tr><th scope="row" rowspan="2">Isolated (AWS Summit only)</th><td>A to Z</td><td class="num">23.3</td><td class="num">29.8</td><td class="num">4</td><td class="num">7</td><td class="num">10</td></tr>
+              <tr><td>Smile</td><td class="num">18.5</td><td class="num">24.3</td><td class="num">8</td><td class="num">9</td><td class="num">10</td></tr>
+              <tr><th scope="row" rowspan="3">Multi-track</th><td>A to Z</td><td class="num">11.3</td><td class="num">27.9</td><td class="num">15</td><td class="num">17</td><td class="num">20</td></tr>
+              <tr><td>Smile</td><td class="num">10.4</td><td class="num">32.0</td><td class="num">4</td><td class="num">10</td><td class="num">20</td></tr>
+              <tr><td>AWS Summit</td><td class="num">21.9</td><td class="num">28.3</td><td class="num">14</td><td class="num">16</td><td class="num">20</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="charts" style="margin-top: 24px">
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/deepracer/charts/multi_qloss_alpha.png"
+                width="1400"
+                height="700"
+                loading="lazy"
+                decoding="async"
+                alt="Q-loss and alpha during multi-track training over about 21,000 steps. Alpha falls smoothly and almost linearly from 0.046 to 0.039. Q-loss mostly sits between 1 and 5 with occasional spikes up to about 19."
+              />
+            </div>
+            <figcaption><strong>Multi-track training.</strong> &alpha; drifts down gently from an already-low starting point. The Q-loss spikes are the critic adjusting to each track switch.</figcaption>
+          </figure>
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/deepracer/charts/multi_eval_bars.png"
+                width="1400"
+                height="700"
+                loading="lazy"
+                decoding="async"
+                alt="Bar chart of 20 evaluation episodes per track for the multi-track model. A to Z: 15 laps completed, 2 over 50 percent, 3 under 50 percent. Smile: 4 laps, 6 over 50 percent, 10 under 50 percent. AWS Summit: 14 laps, 2 over 50 percent, 4 under 50 percent."
+              />
+            </div>
+            <figcaption><strong>20 evaluation episodes per track.</strong> Two tracks are mostly solved. Smile has 10 of 20 episodes under 50% progress.</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub">Final model</h3>
+        <p class="section-lede"><code>14008_post_multi_train</code>, deterministic policy, 6 episodes per track.</p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Final model results table">
+          <table class="data-table results">
+            <thead><tr><th scope="col">Track</th><th scope="col" class="num">Avg progress</th><th scope="col" class="num">Laps</th><th scope="col" class="num">Avg lap time (steps)</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">A to Z Speedway</th><td class="num">100.0%</td><td class="num">6 / 6</td><td class="num">382</td></tr>
+              <tr><th scope="row">Smile Speedway</th><td class="num">51.1%</td><td class="num">1 / 6</td><td class="num">535</td></tr>
+              <tr><th scope="row">AWS Summit Raceway</th><td class="num">97.5%</td><td class="num">5 / 6</td><td class="num">508</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="charts" style="margin-top: 24px">
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/deepracer/charts/final_progress.png"
+                width="1400"
+                height="700"
+                loading="lazy"
+                decoding="async"
+                alt="Per-episode track progress for six episodes on each track. A to Z is 100 percent in every episode. AWS Summit is 100 percent except episode 4 at about 85. Smile varies widely: about 36, 14, 13, 100, 47 and 95 percent."
+              />
+            </div>
+            <figcaption><strong>Per-episode progress, deterministic policy.</strong> A to Z is perfect, AWS Summit has one miss, and Smile ranges from 13% to 100%.</figcaption>
+          </figure>
+          <figure class="chart">
+            <div class="paper">
+              <img
+                src="/deepracer/charts/final_laptime.png"
+                width="1400"
+                height="700"
+                loading="lazy"
+                decoding="async"
+                alt="Lap time in steps for completed laps only. A to Z laps take about 360 to 415 steps. AWS Summit laps take about 495 to 515 steps. Smile has a single completed lap of about 535 steps in episode 4."
+              />
+            </div>
+            <figcaption><strong>Lap time for completed laps.</strong> Only completed laps get a bar, which is why Smile shows just one.</figcaption>
+          </figure>
+        </div>
+        <div class="prose" style="margin-top: 16px">
+          <p>
+            The agent is reliable on two of three tracks. It did not reach five consecutive laps on every
+            track, and Smile Speedway is where the final model fell short: it appears to have forgotten how to complete that track.
+          </p>
+        </div>
+
+        <h3 class="sub">Models</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Models table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>original_training_step_28904.torch</code></th><td>Best checkpoint from single-track training.</td></tr>
+              <tr><th scope="row"><code>runner_up.torch</code></th><td>Second best from single-track training (step 28,030). The base for the curriculum runs.</td></tr>
+              <tr><th scope="row"><code>best_l3.torch</code></th><td><code>runner_up</code> after isolated training on AWS Summit Raceway.</td></tr>
+              <tr><th scope="row"><code>14008_post_multi_train.torch</code></th><td><code>runner_up</code> after multi-track curriculum training. <strong>Best overall.</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="lessons" class="block" aria-labelledby="lessons-title">
+        <h2 id="lessons-title">Lessons and caveats</h2>
+        <ul class="bullets">
+          <li><strong>Forgetting against dilution.</strong> Sequential training forgets earlier tracks. Mixed training avoids that, but one replay buffer and one critic must then represent very different dynamics, and the wide-track experience can drown out the transitions Smile's tight corners need.</li>
+          <li><strong>Entropy creep during fine-tuning.</strong> The automatic &alpha; tuning that helps from scratch can raise &alpha; again during fine-tuning, adding action noise just when the policy should tighten up. Freezing &alpha;, or using a much smaller <code>alpha_lr</code>, is the likely fix.</li>
+          <li><strong>Fine-tuning is sensitive to warmup and learning rate.</strong> Starting updates from a buffer of random actions at a high learning rate degraded pretrained policies quickly. Filling the buffer with the pretrained policy first, at a lower learning rate, was much more stable.</li>
+          <li><strong>Single-frame observations.</strong> There is no frame stacking and no recurrent state, so the policy can't directly infer velocity. Speed is only partly recoverable from the images.</li>
+          <li><strong>Possible improvements.</strong> Per-track replay buffers, a track-conditioned policy or separate encoder heads, longer and more gradual curricula, and domain randomization over width and curvature.</li>
+          <li><strong>Simulation to reality.</strong> The simulated cameras are noise-free and evenly lit, and the LiDAR is idealized. Transfer to a physical car would need noise, lighting and physics randomization.</li>
+        </ul>
+      </section>
+
+      <section id="docker" class="block" aria-labelledby="docker-title">
+        <h2 id="docker-title">The Docker simulator</h2>
+        <div class="prose">
+          <p>
+            The simulator is not a Python library. It is a ROS Melodic and Gazebo 9 application (Python 3.6,
+            with a Coach-style RL stack) that a container exposes through a <strong>ZeroMQ socket on port
+            8888</strong>. The Python side runs on your machine as a normal Gym environment that talks to that
+            socket.
+          </p>
+        </div>
+
+        <pre class="codeblock" tabindex="0"><code>host (your Python venv)                     Docker container
+------------------------                    ----------------------------------
+run.py / visual.py / eval*.py               Gazebo + ROS Melodic (DeepRacer sim)
+  gym.make('deepracer-v0')                    patched gym_agent (ZMQ REP server)
+    DeepracerGymEnv                             sends obs and info,
+    DeepracerGymAdapter  --- ZMQ REQ ---&gt;        receives actions
+    reward_function(info['reward_params'])      configs/ mounted read-only
+                              port 8888</code></pre>
+
+        <h3 class="sub">Image layers</h3>
+        <ol class="steps">
+          <li>
+            <strong>Base image.</strong> A prebuilt DeepRacer simulation image from Docker Hub (tag
+            <code>v0</code>) with ROS, Gazebo, the track worlds and the training stack. It's large, about 5 GB
+            compressed and 19 GB on disk, and is downloaded once.
+          </li>
+          <li>
+            <strong><code>Dockerfile</code>.</strong> Layers this project's patches on top (the
+            <code>patches/</code> directory is copied into the image):
+            <ul class="bullets" style="margin-top: 8px">
+              <li><strong>Camera path fix.</strong> Corrects a hard-coded Gazebo model name so the camera topics resolve.</li>
+              <li><strong>Info-dict patch</strong> (<code>environment_response.py</code>). Injects <code>reward_params</code> and <code>episode_status</code> into every step's <code>info</code>. This is what lets the Python side compute the reward and read <code>progress</code>, <code>lap_complete</code>, <code>crashed</code>, <code>reversed</code>, <code>off_track</code>, <code>immobilized</code> and <code>time_up</code>.</li>
+              <li><strong>Kinesis video streaming disabled,</strong> so the sim doesn't try to stream to AWS.</li>
+              <li><strong>LiDAR range raised from 0.5 m to 1.0 m,</strong> in every file where it's defined.</li>
+              <li><strong><code>gym_agent.py</code>.</strong> Replaces the stock PPO agent with a pass-through that binds a ZMQ <code>REP</code> socket on port 8888. It sends each observation (msgpack with numpy support) and applies whatever action comes back, and it handles resets with dummy actions.</li>
+              <li><strong><code>launch-simapp-rosnodes.sh</code>.</strong> A custom launcher that reads <code>/configs/environment_params.yaml</code>, builds the simulator's parameter file, copies <code>agent_params.json</code> in as the model metadata, and starts the simulation under a virtual display (Xvfb) with <code>roslaunch</code>.</li>
+            </ul>
+          </li>
+          <li>
+            <strong><code>deepracer.def</code>.</strong> The same patches as an Apptainer definition, for machines
+            without Docker such as shared HPC clusters, where ports are derived from a hash of the username so
+            users don't collide.
+          </li>
+        </ol>
+
+        <h3 class="sub">Scripts <code>scripts/</code></h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Simulator scripts table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>start_deepracer.sh</code></th><td>Pulls the base image if missing, builds the patched <code>deepracer</code> image if missing, then runs the container detached on port 8888 with <code>configs/</code> mounted read-only (3 CPUs and 6 GB by default). Options: <code>-C</code> CPUs, <code>-M</code> memory, <code>-E true</code> evaluation mode, <code>-W &lt;world&gt;</code> track for evaluation. With Apptainer it builds and starts a <code>.sif</code> instance instead.</td></tr>
+              <tr><th scope="row"><code>stop_deepracer.sh</code></th><td>Stops the container (Docker) or the instance and overlay (Apptainer).</td></tr>
+              <tr><th scope="row"><code>restart_deepracer.sh</code></th><td>Stop, then start, passing the options through. This is how the track is switched mid-experiment.</td></tr>
+              <tr><th scope="row"><code>cleanup_deepracer.sh</code></th><td>Full teardown. Removes the container and <strong>deletes the images</strong>, forcing a full re-download. Also removes a Conda env named <code>deepracer</code> if one exists. Use only for a clean slate.</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          <strong>Heads-up on cleanup:</strong> after a fresh image build, <code>start_deepracer.sh</code> runs
+          <code>docker system prune --force</code>. That prunes dangling images, stopped containers, unused
+          networks and build cache across the <em>whole</em> Docker host, not only DeepRacer's. If you share the
+          host with other projects, back up what you need first or remove that line.
+        </p>
+
+        <h3 class="sub">Training mode and evaluation mode</h3>
+        <ul class="bullets">
+          <li><strong>Training mode</strong> (default). The track comes from <code>WORLD_NAME</code> in <code>environment_params.yaml</code>.</li>
+          <li><strong>Evaluation mode</strong> (<code>-E true -W &lt;world&gt;</code>). The track comes from the <code>-W</code> argument and ignores the YAML, which makes sweeping several tracks scriptable. The evaluation helpers call <code>restart_deepracer.sh</code> this way before each track.</li>
+        </ul>
+
+        <h3 class="sub">The client protocol <code>packages/deepracer_gym/</code></h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Client protocol files table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>zmq_client.py</code></th><td>A ZMQ <code>REQ</code> socket with msgpack serialization. The first connection has a long timeout (about 8 minutes, because the sim takes a while to boot), then a shorter one (about 100 s).</td></tr>
+              <tr><th scope="row"><code>gym_adapter.py</code></th><td>Translates between Gym semantics and the sim's request/response loop. After an episode ends it sends dummy actions until the sim confirms the next one has started, and it maps the sim's flags to Gymnasium's <code>terminated</code> and <code>truncated</code>.</td></tr>
+              <tr><th scope="row"><code>envs/deepracer_gym.py</code></th><td>The <code>deepracer-v0</code> environment. Observations come from the sim, the reward is computed locally from <code>info['reward_params']</code>, and the action space is <code>Box(&minus;1, 1, (2,))</code>.</td></tr>
+              <tr><th scope="row"><code>src/utils.py</code></th><td><code>make_environment()</code> wraps the env with <code>FlattenObservation</code> and <code>RecordEpisodeStatistics</code>. It also holds the multi-track evaluation helpers.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Running it</h3>
+        <ol class="steps">
+          <li>Start Docker. On Windows, run the bash scripts from WSL and enable Docker Desktop's WSL integration for that distro.</li>
+          <li>From the project root, run the start script. The first run downloads the base image and builds the patched one (several minutes), and the sim needs another 30 to 120 seconds to boot before it answers on port 8888.</li>
+          <li>In a Python environment with the dependencies installed (<code>gymnasium</code>, <code>torch</code>, <code>pyzmq</code>, <code>msgpack</code>, <code>msgpack_numpy</code>, <code>imageio</code>, <code>loguru</code>, <code>munch</code>, <code>pyyaml</code>, &hellip;) and the project and <code>packages</code> on the Python path, run a script.</li>
+        </ol>
+        <pre class="codeblock" tabindex="0"><code>bash scripts/start_deepracer.sh</code></pre>
+      </section>
+
+      <section id="repo" class="block" aria-labelledby="repo-title">
+        <h2 id="repo-title">What each file does</h2>
+        <p class="section-lede">
+          Run Python files as modules from the project root (<code>python -m src.&lt;name&gt;</code>). Several
+          scripts keep their settings (checkpoint path, episode count, output folder) as constants at the top,
+          so check those first. Scripts that switch tracks edit <code>environment_params.yaml</code> and restart
+          the simulator, so run only one at a time.
+        </p>
+
+        <h3 class="sub">Repository map</h3>
+        <pre class="codeblock" tabindex="0"><code>configs/     agent_params.json, environment_params.yaml,
+             hyper_params.yaml, reward_function.py
+src/         agent, encoders, replay buffer, training and evaluation scripts
+packages/    deepracer_gym/  (Gym environment, ZMQ client, adapter)
+patches/     files injected into the simulator image
+scripts/     start / stop / restart / cleanup of the simulator
+models/      trained checkpoints
+data/        training logs, evaluation results, plots
+videos/      example laps (GIF and MP4)
+Dockerfile, deepracer.def   simulator image definitions (project root)</code></pre>
+
+        <h3 class="sub">Agent and learning components <code>src/</code></h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Agent files table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>sac_agent.py</code></th><td>The SAC agent used by all training and evaluation. Defines the shared encoder with LayerNorm and feature head, the actor, twin critics and target critics, the learned temperature &alpha;, observation pre-processing, action sampling with the tanh log-probability correction, and soft target updates.</td></tr>
+              <tr><th scope="row"><code>transforms.py</code></th><td>The observation encoders: a stereo-camera CNN (a shared per-eye CNN, then a fusion CNN) and a 1-D CNN for LiDAR. <code>EncodeObservation</code> splits the flat vector back into LiDAR and camera parts and concatenates their encodings. Also holds the orthogonal-init helper and identity pre-processing stubs.</td></tr>
+              <tr><th scope="row"><code>agents.py</code></th><td>A base <code>Agent</code> class, a <code>RandomAgent</code> baseline, and a second copy of <code>SACAgent</code>. Training and evaluation scripts use the one in <code>sac_agent.py</code>.</td></tr>
+              <tr><th scope="row"><code>replay_buffer.py</code></th><td>Circular numpy replay buffer that samples random minibatches as torch tensors.</td></tr>
+              <tr><th scope="row"><code>utils.py</code></th><td>Seeding and device selection, <code>make_environment()</code>, reading the world and race type from the config, <code>demo()</code> for recorded videos, <code>evaluate()</code> and <code>evaluate_track()</code> for multi-track evaluation, box-plot generation and the lap-time helper.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Training scripts</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Training scripts table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>run.py</code></th><td>The main single-track SAC loop, from random weights. Handles random warmup, batched update bursts, TensorBoard and text logging, and saves a checkpoint after two consecutive completed laps plus a final model.</td></tr>
+              <tr><th scope="row"><code>run_curriculum.py</code></th><td>The same loop, but loads a pretrained checkpoint first. Uses <code>hyper_params.yaml</code> as is and saves periodic checkpoints every 2,500 steps, on whichever track the config names.</td></tr>
+              <tr><th scope="row"><code>multi_track_train.py</code></th><td>Multi-track curriculum. Starts from a pretrained checkpoint, samples a track by weight every 2 episodes, rewrites <code>WORLD_NAME</code>, restarts the simulator and keeps training on a shared replay buffer. Random-action warmup, verification GIFs for the first episodes, and checkpoints on consecutive laps of a chosen track.</td></tr>
+              <tr><th scope="row"><code>multi_track_eval_detministic_warmup.py</code></th><td>Same as <code>multi_track_train.py</code>, except warmup uses the pretrained policy instead of random actions. The more stable way to fine-tune. Despite the name, it is a training script.</td></tr>
+              <tr><th scope="row"><code>htb_train.py</code></th><td>Head-to-bot fine-tuning from a pretrained model, with periodic checkpoints. The bot count is set in <code>environment_params.yaml</code>.</td></tr>
+              <tr><th scope="row"><code>htb_multi_track_train.py</code></th><td>Head-to-bot training across all three tracks with near-equal weights (0.34, 0.33, 0.33), switching every 2 episodes.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Evaluation and visualization</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Evaluation scripts table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>eval.py</code></th><td>Quick check of one checkpoint over several episodes with a deterministic policy. Prints average return, average, minimum and maximum progress, and laps completed.</td></tr>
+              <tr><th scope="row"><code>batch_eval.py</code></th><td>Evaluates every <code>.torch</code> file in a folder on the configured track and writes a table of min progress, std dev, laps and episodes above 50%. This is how the best checkpoints were picked.</td></tr>
+              <tr><th scope="row"><code>all_tracks_eval.py</code></th><td>Evaluates one checkpoint on all three tracks in turn, switching the track and restarting the simulator each time. Writes a summary file.</td></tr>
+              <tr><th scope="row"><code>directory_all_tracks_eval.py</code></th><td>The same across every checkpoint in a directory, with a results file per model.</td></tr>
+              <tr><th scope="row"><code>eval_laptime.py</code></th><td>Final evaluation of one model on all three tracks. Records progress and lap time in steps per episode and produces the progress and lap-time figures shown above.</td></tr>
+              <tr><th scope="row"><code>htb_eval.py</code></th><td>Evaluates head-to-bot checkpoints on the wide track with 3 bot cars and no obstacles, recording progress and why each episode ended.</td></tr>
+              <tr><th scope="row"><code>visual.py</code></th><td>Runs one episode with a chosen model and saves a GIF. Options: <code>--model</code>, <code>--output</code>, <code>--max-steps</code>, <code>--fps</code>, <code>--frame-skip</code>, <code>--deterministic</code>. These are the lap videos above.</td></tr>
+              <tr><th scope="row"><code>layout_switcher_test.py</code></th><td>Sanity check for track switching: drives each track and saves one GIF per track so you can confirm the right world loaded.</td></tr>
+              <tr><th scope="row"><code>time_per_env_setup.py</code>, <code>deepracer_timer.py</code></th><td>Measure how long <code>make_environment()</code> takes, and how long a simulator restart into each track takes. That restart is the cost paid on every track switch.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Settings <code>configs/</code></h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Config files table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>agent_params.json</code></th><td>Sensors, action-space bounds (steering &plusmn;30&deg;, speed 0.5&ndash;0.7 m/s), continuous action type, and the inherited console fields. Read by both the Python environment and the simulator. Changing the sensors changes the observation size, so saved models would no longer match.</td></tr>
+              <tr><th scope="row"><code>environment_params.yaml</code></th><td>Simulator and race settings: <code>WORLD_NAME</code>, obstacle and bot counts, bot speed, start-position randomization, driving direction, lane changes and domain randomization. The container reads it at startup, and the multi-track scripts rewrite it automatically.</td></tr>
+              <tr><th scope="row"><code>hyper_params.yaml</code></th><td>The SAC hyperparameters. Currently set for fine-tuning (learning rate 3e-5), so raise them for training from scratch.</td></tr>
+              <tr><th scope="row"><code>reward_function.py</code></th><td>The reward, called every step. The active version mixes a three-level centering score (20%) with the square root of progress (80%), gives &minus;1 for a crash and 0.001 off the track.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Typical commands</h3>
+        <pre class="codeblock" tabindex="0"><code>python -m src.run                  # train from scratch
+python -m src.multi_track_train    # multi-track curriculum
+python -m src.visual --model models/14008_post_multi_train.torch \
+    --output videos/lap.gif --deterministic
+python -m src.all_tracks_eval      # evaluate across all three tracks</code></pre>
+      </section>
+
+      <section id="references" class="block" aria-labelledby="references-title">
+        <h2 id="references-title">References</h2>
+        <ol class="refs">
+          <li>
+            Haarnoja, Zhou, Abbeel, Levine.
+            <cite>Soft Actor-Critic: Off-Policy Maximum Entropy Deep Reinforcement Learning with a Stochastic Actor.</cite> ICML 2018.
+            <span class="ref-links"><a href="https://arxiv.org/abs/1801.01290" target="_blank" rel="noopener noreferrer">arXiv</a></span>
+          </li>
+          <li>
+            Haarnoja et al.
+            <cite>Soft Actor-Critic Algorithms and Applications.</cite> 2018. (Automatic temperature tuning)
+            <span class="ref-links"><a href="https://arxiv.org/abs/1812.05905" target="_blank" rel="noopener noreferrer">arXiv</a></span>
+          </li>
+          <li>
+            Balaji et al.
+            <cite>DeepRacer: Autonomous Racing Platform for Experimentation with Sim2Real Reinforcement Learning.</cite> 2019.
+            <span class="ref-links"><a href="https://arxiv.org/abs/1911.01562" target="_blank" rel="noopener noreferrer">arXiv</a></span>
+          </li>
+          <li>
+            Kirkpatrick et al.
+            <cite>Overcoming Catastrophic Forgetting in Neural Networks.</cite> PNAS 2017.
+            <span class="ref-links"><a href="https://arxiv.org/abs/1612.00796" target="_blank" rel="noopener noreferrer">arXiv</a></span>
+          </li>
+          <li>
+            Sutton and Barto. <cite>Reinforcement Learning: An Introduction.</cite>
+            <span class="ref-links"><a href="http://incompleteideas.net/book/the-book-2nd.html" target="_blank" rel="noopener noreferrer">Book</a></span>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/#work">&larr; Back to all projects</a>
+    </footer>
+
+  </body>
+</html>

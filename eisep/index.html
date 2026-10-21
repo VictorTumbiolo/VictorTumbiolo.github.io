@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="EISep RNN: research on a recurrent network that enforces Dale's principle through a learnable excitatory-inhibitory separation, tested on multi-task, continual and reinforcement learning."
+    />
+    <title>EISep: Dale's Principle in RNNs</title>
+    <script type="module" crossorigin src="/assets/eisep-BHcTkLTX.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/projects-D6KBgP7A.js">
+    <link rel="modulepreload" crossorigin href="/assets/project-page-YFq_ndGV.js">
+    <link rel="stylesheet" crossorigin href="/assets/projects-BDO5pT66.css">
+  </head>
+  <body>
+    <a class="skip" href="#idea">Skip to content</a>
+
+    <header class="site-header">
+      <a class="brand" href="/" data-profile-name>Home</a>
+      <nav aria-label="Primary">
+        <a href="/#work">All projects</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="project-hero" aria-labelledby="page-title">
+        <a class="back" href="/#work">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M12 8H4M7.5 4.5L4 8l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+          All projects
+        </a>
+        <p class="eyebrow">Research &middot; NeuroAI &middot; Recurrent neural networks &middot; PyTorch</p>
+        <h1 id="page-title">Dale's Principle as an Inductive Bias in RNNs</h1>
+        <p class="lede">
+          Real neurons are either excitatory or inhibitory, never both. Artificial networks ignore this, and earlier
+          attempts to impose it made training unstable. <strong>EISep</strong> is a recurrent network that enforces
+          the rule through a <strong>learnable excitatory&ndash;inhibitory separation</strong>, and in these experiments
+          it trains more stably, develops sparse and modular connectivity, and does better on continual learning and
+          reinforcement learning than a vanilla RNN.
+        </p>
+        <div class="actions">
+          <a class="button" href="#idea">The idea</a>
+          <a class="button secondary" href="#rl">Results</a>
+          <a class="button secondary" href="#role">My role</a>
+        </div>
+        <dl class="facts">
+          <div><dt>Architecture</dt><dd>EISep RNN</dd></div>
+          <div><dt>Core idea</dt><dd>Learnable E&ndash;I signs</dd></div>
+          <div><dt>Tested on</dt><dd>Multi-task, continual, RL</dd></div>
+          <div><dt>Benchmark</dt><dd>20 cognitive tasks</dd></div>
+          <div><dt>Status</dt><dd>Research paper</dd></div>
+          <div><dt>My role</dt><dd>Experiments and analysis</dd></div>
+        </dl>
+      </section>
+
+      <nav class="toc" aria-label="On this page">
+        <a href="#idea">The idea</a>
+        <a href="#method">The method</a>
+        <a href="#multitask">Multi-task</a>
+        <a href="#structure">Structure</a>
+        <a href="#continual">Continual learning</a>
+        <a href="#rl">Reinforcement learning</a>
+        <a href="#dynamics">Internal dynamics</a>
+        <a href="#ablations">Ablations</a>
+        <a href="#limits">Limits</a>
+        <a href="#role">My role</a>
+        <a href="#references">References</a>
+      </nav>
+
+      <section id="idea" class="block" aria-labelledby="idea-title">
+        <h2 id="idea-title">The idea: one sign per neuron</h2>
+        <div class="prose">
+          <p>
+            <strong>Dale's principle</strong> says each biological neuron is either excitatory or inhibitory: it
+            releases the same type of neurotransmitter at all of its synapses, so every connection it sends out has
+            the same sign. Artificial networks work differently. A unit can send positive weights to some neurons and
+            negative weights to others, which makes optimization easy and biology unrecognizable.
+          </p>
+          <p>
+            Imposing the rule has a reputation for hurting. Earlier work suggests it can reduce capacity, narrow the
+            loss basin and impair learning, so most networks keep their unconstrained units. This project asks
+            whether Dale's principle can instead work as a useful <strong>inductive bias</strong>, a built-in
+            assumption that steers learning toward good solutions.
+          </p>
+        </div>
+
+        <div class="split wide-fig" style="margin-top: 24px">
+          <figure class="chart">
+            <div class="paper">
+              <img src="/eisep/figures/dale_schematic.png" width="517" height="468" alt="Two rows of six-neuron networks, before and after training. In the Simple network each neuron sends both red and blue connections. In the EISep network each neuron sends only red or only blue connections, and which colour a neuron has can change during training." loading="lazy" />
+            </div>
+            <figcaption>A. In a Simple RNN, each neuron can project positive (red) <em>and</em> negative (blue) weights. B. In an EISep RNN, each neuron can only project positive weights (excitatory) <em>or</em> negative weights (inhibitory), and this sign is learnable during training.</figcaption>
+          </figure>
+          <div class="prose">
+            <p>
+              The catch is that splitting a mixed-sign neuron into an excitatory one and an inhibitory one could
+              reduce expressivity at the same hidden size. Earlier attempts to fix every neuron's identity narrowed
+              the solution space and made optimization harder, which led to degraded performance and slower or
+              unstable training.
+            </p>
+            <p>
+              EISep makes two changes to avoid that, covered in <a href="#method">the method</a>: the sign of each
+              neuron is <strong>learned</strong>, and the weights start from a distribution that keeps the initial
+              spectral radius small.
+            </p>
+          </div>
+        </div>
+
+        <h3 class="sub">How it differs from earlier Dale-constrained networks</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Comparison of Dale-constrained networks">
+          <table class="data-table results">
+            <thead><tr><th scope="col">Model</th><th scope="col">Initialization</th><th scope="col">E&ndash;I sign</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Simple</th><td>Gaussian</td><td>&ndash;</td></tr>
+              <tr><th scope="row">ColEI</th><td>Exponential</td><td>fixed</td></tr>
+              <tr><th scope="row">DBPN</th><td>Uniform</td><td>fixed</td></tr>
+              <tr><th scope="row">DANN</th><td>Exponential</td><td>fixed</td></tr>
+              <tr class="us"><th scope="row">EISep</th><td>Rectified Gaussian</td><td><strong>learnable</strong></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          Comparison of initialization methods and E&ndash;I sign learnability across Dale-constrained networks.
+          Simple is the vanilla RNN baseline.
+        </p>
+        <ul class="ghost-grid" style="margin-top: 24px">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Fixed neuron identity</h3>
+            <p>In earlier models the sign matrix is fixed once at initialization, so the network can't adapt which neurons are excitatory or inhibitory, which constrains the optimization path.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Initialization</h3>
+            <p>To keep weights non-negative, earlier models sample from gamma or exponential distributions, which can give a large initial spectral radius and hurt training stability.</p>
+          </li>
+        </ul>
+      </section>
+
+      <section id="method" class="block" aria-labelledby="method-title">
+        <h2 id="method-title">The method: EISep</h2>
+        <h3 class="sub">Starting point</h3>
+        <p class="section-lede">A standard RNN with hidden size N, activation &phi;, recurrent weights W, input weights U and output weights V:</p>
+        <pre class="codeblock" tabindex="0"><code>h_t = phi( W h_{t-1} + U x_t + b_U + b_W )
+o_t = V h_t + b_V</code></pre>
+        <p class="note" style="margin-top: 0">
+          Simply starting neurons as excitatory or inhibitory isn't enough, because unconstrained optimization flips
+          the signs over time. The usual fix is <code>W = QD</code>, where Q is a learnable non-negative matrix and D is
+          a fixed diagonal matrix of &plusmn;1, with non-negativity enforced by gradient masking or by a non-negative
+          transform.
+        </p>
+
+        <h3 class="sub">Learnable signs with Gumbel-Softmax</h3>
+        <p class="section-lede">
+          EISep replaces the fixed D with a learned one, using the Gumbel-Softmax reparameterization so the sign
+          choice stays differentiable.
+        </p>
+        <pre class="codeblock" tabindex="0"><code>M      in R^{N x 2}                  learnable logits, one row per neuron
+m_i    = GSoftmax(M_i)               soft sign mask for neuron i
+e_i    = m_i[0] - m_i[1]             soft sign value, +1 or -1 in most cases
+D      = diag(e_1, ..., e_N)
+
+W_0    in R^{N x N}, W_0,ij ~ N(0, 1/N)
+W      = ReLU(W_0) D                 non-negative values, one sign per neuron
+
+test time:  e_i = +1 if M_i[0] &gt; M_i[1] else -1       (no sampling noise)
+
+L      = L_task + lambda_e * L_e
+L_e    = (1/N) * sum_i H( softmax(M_i) )                  entropy of each neuron's sign</code></pre>
+        <ul class="bullets">
+          <li><strong>Learnable sign matrix.</strong> Neurons can explore different E/I organizations and follow more flexible optimization trajectories.</li>
+          <li><strong>Rectified Gaussian initialization.</strong> <code>ReLU(W_0)</code> starts from a rectified Gaussian, which controls the initial spectral radius better than the exponential or gamma samples used before.</li>
+          <li><strong>Entropy regularization.</strong> The term <code>L_e</code> pushes each neuron's sign toward a firm choice, so identities are stable later in training. In the paper's runs it drops below 10<sup>&minus;2</sup> within the first quarter of training, long before the task loss converges, so signs settle early.</li>
+          <li><strong>Backbones.</strong> The same idea is applied to LSTM and GRU recurrent matrices for harder tasks, with one sign mask shared across all the gates so each neuron keeps one identity.</li>
+        </ul>
+
+        <h3 class="sub">Baselines</h3>
+        <p class="section-lede">
+          EISep is compared with the vanilla RNN (called <strong>Simple</strong>) and three Dale-constrained designs. The
+          original ColEI and DANN use plain SGD, while these experiments use Adam, so Adam variants of both were added
+          for a fair comparison.
+        </p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Baselines table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row">Simple</th><td>Vanilla RNN with a Gaussian initialization and unconstrained weights.</td></tr>
+              <tr><th scope="row">ColEI</th><td>Explicit value-sign split <code>W = QD</code> with a fixed E/I ratio. Weights are sampled from exponential distributions and rescaled to a spectral radius of 1.5, and Q is clipped to be non-negative after every update. Run as ColEI-SGD and ColEI-Adam.</td></tr>
+              <tr><th scope="row">DBPN</th><td>Dale's backpropagation. Dale's principle is enforced by projecting weights back to the correct sign after updates, with a uniform initialization and fixed identities.</td></tr>
+              <tr><th scope="row">DANN</th><td>Separate excitatory and inhibitory pathways, <code>W = W<sup>EE</sup> &minus; W<sup>EI</sup>W<sup>IE</sup></code>, with three non-negative matrices and exponential initialization. Run as DANN-SGD and DANN-Adam.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="multitask" class="block" aria-labelledby="multitask-title">
+        <h2 id="multitask-title">Multi-task cognitive benchmark</h2>
+        <p class="section-lede">
+          The first test is a benchmark of 20 interrelated cognitive tasks, widely used to study multi-task capacity in
+          RNNs. One network has to switch between task rules from trial to trial.
+        </p>
+        <div class="prose">
+          <p>
+            Each trial gives the network a rule input saying which task is active, then noisy sensory stimuli. The
+            correct choice and stimulus strength are randomized, so easy and hard decisions are mixed. The suite
+            tests working memory, perceptual decision-making and rule-based context switching in a single network.
+          </p>
+        </div>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Task families table" style="margin-top: 16px">
+          <table class="data-table files">
+            <thead><tr><th scope="col">Family</th><th scope="col">Tasks</th><th scope="col">What it asks for</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Go</th><td>Go, RT Go, Delayed Go</td><td>Report the direction of a single stimulus.</td></tr>
+              <tr><th scope="row">Anti</th><td>Anti, RT Anti, Delayed Anti</td><td>Report the direction opposite to the stimulus.</td></tr>
+              <tr><th scope="row">Decision making</th><td>DM 1, DM 2, Ctx DM 1, Ctx DM 2, MultSen DM</td><td>Two stimuli at once. Respond to the stronger one, ignoring one modality in the context-dependent tasks.</td></tr>
+              <tr><th scope="row">Delayed decision making</th><td>Dly DM 1, Dly DM 2, Ctx Dly DM 1, Ctx Dly DM 2</td><td>The same comparison with a delay between the two stimuli, so the first must be remembered.</td></tr>
+              <tr><th scope="row">Matching</th><td>DMS, DNMS, DMC, DNMC</td><td>Delayed match or non-match to a sample, or to a category. Respond only on a match (or only on a non-match).</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Results</h3>
+        <figure class="chart" style="margin-top: 0">
+          <div class="paper">
+            <img src="/eisep/figures/multitask_benchmark.png" width="1237" height="773" alt="Four panels. A: test accuracy for each of the 20 tasks for seven models. B: average accuracy, 0.97 for EISep and Simple and lower for the others. C: test accuracy, gradient norm and recurrent balance against learning rate for EISep and Simple. D: loss, gradient norm and spectral radius over training for all seven models." loading="lazy" />
+          </div>
+          <figcaption>
+            <strong>A.</strong> Accuracy per task: EISep is consistently above the prior Dale-constrained baselines and
+            matches Simple. <strong>B.</strong> Averaged across tasks, EISep and Simple tie at 0.97.
+            <strong>C.</strong> At high learning rates EISep keeps higher accuracy, lower gradient norms and tighter
+            recurrent balance than Simple. <strong>D.</strong> EISep has lower loss, smaller gradient norms and a more
+            stable spectral radius throughout training.
+          </figcaption>
+        </figure>
+        <p class="note">
+          So the headline result here is parity, not a win: enforcing Dale's principle doesn't have to cost task
+          performance, and EISep reaches Simple's accuracy where earlier Dale-constrained models fall well short.
+        </p>
+
+        <div class="charts" style="margin-top: 24px">
+          <figure class="hbars"><figcaption><strong>Test accuracy</strong> averaged over the 20 tasks</figcaption>
+          <div class="hrow ei"><span class="name">EISep</span><span class="track"><i style="--v: 97.0%"></i></span><b>0.97</b></div>
+          <div class="hrow"><span class="name">Simple</span><span class="track"><i style="--v: 97.0%"></i></span><b>0.97</b></div>
+          <div class="hrow"><span class="name">DANN-SGD</span><span class="track"><i style="--v: 83.0%"></i></span><b>0.83</b></div>
+          <div class="hrow"><span class="name">DANN-Adam</span><span class="track"><i style="--v: 75.0%"></i></span><b>0.75</b></div>
+          <div class="hrow"><span class="name">ColEI-SGD</span><span class="track"><i style="--v: 71.0%"></i></span><b>0.71</b></div>
+          <div class="hrow"><span class="name">ColEI-Adam</span><span class="track"><i style="--v: 61.0%"></i></span><b>0.61</b></div>
+          <div class="hrow"><span class="name">DBPN</span><span class="track"><i style="--v: 81.0%"></i></span><b>0.81</b></div>
+          </figure>
+          <figure class="hbars"><figcaption><strong>Recurrent weight sparsity</strong> fraction of weights with |w| &lt; 0.1&sigma;</figcaption>
+          <div class="hrow ei"><span class="name">EISep</span><span class="track"><i style="--v: 87.0%"></i></span><b>0.87</b></div>
+          <div class="hrow"><span class="name">Simple</span><span class="track"><i style="--v: 6.0%"></i></span><b>0.06</b></div>
+          <div class="hrow"><span class="name">DANN-SGD</span><span class="track"><i style="--v: 6.0%"></i></span><b>0.06</b></div>
+          <div class="hrow"><span class="name">DANN-Adam</span><span class="track"><i style="--v: 5.0%"></i></span><b>0.05</b></div>
+          <div class="hrow"><span class="name">ColEI-SGD</span><span class="track"><i style="--v: 27.0%"></i></span><b>0.27</b></div>
+          <div class="hrow"><span class="name">ColEI-Adam</span><span class="track"><i style="--v: 34.0%"></i></span><b>0.34</b></div>
+          <div class="hrow"><span class="name">DBPN</span><span class="track"><i style="--v: 26.0%"></i></span><b>0.26</b></div>
+          </figure>
+        </div>
+
+        <h3 class="sub">Training stability</h3>
+        <div class="prose">
+          <p>
+            Most baselines show occasional spikes in loss and gradient norm. EISep's curves are lower and steadier,
+            and it holds the spectral radius of the recurrent matrix tighter than most of them. Across learning rates
+            the pattern is clear: Simple's gradient norm blows up at a learning rate of 0.05, rising to roughly
+            10<sup>12</sup>, while EISep's stays in range, and at the highest learning rate tried (0.5) EISep still
+            scores about 0.5 while Simple falls to about 0.1.
+          </p>
+          <p>
+            EISep also keeps a tighter <strong>recurrent balance</strong>, defined as the average input to each neuron.
+            In biological networks, balance between excitation and inhibition is known to stabilize dynamics, and the
+            same mechanism appears to emerge here.
+          </p>
+        </div>
+
+        <figure class="chart" style="margin-top: 24px; max-width: 560px">
+          <div class="paper">
+            <img src="/eisep/figures/stable_zones.png" width="657" height="597" alt="Top: test performance against learning rate for seven models with a dashed line at 0.8. Bottom: horizontal bars showing each model's stable learning-rate range and its width." loading="lazy" />
+          </div>
+          <figcaption>
+            A model's <strong>stable zone</strong> is the range of learning rates where the lower confidence bound of its
+            performance stays above 0.8. The width &Delta;LR is the length of that range in log learning rate.
+          </figcaption>
+        </figure>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Summary of baselines on the multi-task and continual benchmarks" style="margin-top: 24px">
+          <table class="data-table results">
+            <thead>
+              <tr><th scope="col">Model</th><th scope="col">Multi-task accuracy</th><th scope="col">Stable zone &Delta;LR</th><th scope="col">Sparsity</th><th scope="col">Continual, final round</th></tr>
+            </thead>
+            <tbody>
+              <tr class="us"><th scope="row">EISep</th><td>0.97</td><td>2.09</td><td>0.87</td><td>0.96</td></tr>
+<tr><th scope="row">Simple</th><td>0.97</td><td>1.84</td><td>0.06</td><td>0.55</td></tr>
+<tr><th scope="row">DANN-SGD</th><td>0.83</td><td>1.14</td><td>0.06</td><td>0.10</td></tr>
+<tr><th scope="row">DANN-Adam</th><td>0.75</td><td>2.13</td><td>0.05</td><td>0.90</td></tr>
+<tr><th scope="row">ColEI-SGD</th><td>0.71</td><td>0.07</td><td>0.27</td><td>0.49</td></tr>
+<tr><th scope="row">ColEI-Adam</th><td>0.61</td><td>0.00</td><td>0.34</td><td>0.45</td></tr>
+<tr><th scope="row">DBPN</th><td>0.81</td><td>1.64</td><td>0.26</td><td>0.79</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          EISep's stable zone is wider than most baselines. The exception is DANN-Adam, whose zone sits at low learning
+          rates, so it is better at escaping plateaus than at stabilizing gradients. EISep's zone sits at higher
+          learning rates. The cost shows up at the other end: at a learning rate of 10<sup>&minus;4</sup> EISep scores
+          about 0.45 against Simple's 0.73.
+        </p>
+
+        <details class="fold">
+          <summary>Training setup</summary>
+          <div>
+            <ul class="bullets tight" style="margin-top: 0">
+              <li>All recurrent networks use 64 hidden units and are trained with backpropagation through time.</li>
+              <li>Softplus activation, Adam optimizer, cross-entropy loss, batch size 32, sequence length 100, 3000 epochs.</li>
+              <li>Gumbel-Softmax temperature 0.1, with no annealing. Entropy-loss coefficient &lambda;<sub>e</sub> = 1.</li>
+              <li>Input and output weights use orthogonal initialization. The E&ndash;I logit matrix starts at N(0, 1/N).</li>
+              <li>10 random seeds for the main comparison, and 5 seeds for the learning-rate sweep over 10<sup>&minus;4</sup> to 0.5 (8 values). Error bars are standard errors across seeds.</li>
+              <li>Experiments ran on a single consumer laptop GPU (RTX 4060, 8&nbsp;GB). About 12 minutes per multi-task run, and tens of GPU-hours in total including tuning and ablations.</li>
+            </ul>
+          </div>
+        </details>
+      </section>
+
+      <section id="structure" class="block" aria-labelledby="structure-title">
+        <h2 id="structure-title">Structure that emerges: modular and sparse</h2>
+        <p class="section-lede">
+          Two more properties of real neural circuits appear in EISep without being built in: functional modules and
+          sparse connectivity.
+        </p>
+
+        <h3 class="sub">Modularity, seen on a two-choice task</h3>
+        <div class="prose">
+          <p>
+            On a noisy two-alternative forced-choice task, the network must pick the stronger of two noisy signals. A
+            signal-detection index d&prime; sorts the neurons into <strong>Group 1</strong> (selective for signal 1),
+            <strong>Group 2</strong> (selective for signal 2) and <strong>non-selective</strong> neurons.
+          </p>
+        </div>
+        <figure class="chart" style="margin-top: 16px">
+          <div class="paper">
+            <img src="/eisep/figures/two_afc.png" width="1247" height="290" alt="Recurrent weight matrices for EISep and Simple sorted into groups G1, G2 and non-selective, with block averages and a winner-take-all circuit diagram. EISep shows clear blocks, Simple does not." loading="lazy" />
+          </div>
+          <figcaption>
+            <strong>A, B.</strong> EISep's recurrent weights have a clear block structure: excitation within a group and
+            inhibition between groups, i.e. strong self-excitation and mutual inhibition. <strong>C, D.</strong> Simple
+            shows no clear separation of within-group and between-group connections. <strong>E.</strong> The EISep
+            pattern resembles the winner-take-all circuit commonly used to model perceptual decisions.
+          </figcaption>
+        </figure>
+
+        <h3 class="sub">Modularity and sparsity, measured</h3>
+        <div class="prose">
+          <p>
+            To measure modularity across the whole 20-task benchmark, neurons are partitioned with two spectral
+            clustering methods suited to directed, signed graphs (directed and lifted), and the partitions are scored
+            with <strong>signed modularity</strong>, which rewards positive weights inside modules and negative weights
+            between them. EISep has the highest modularity under both methods.
+          </p>
+          <p>
+            Sparsity is the fraction of small weights (<code>|w| &lt; 0.1&sigma;</code>). EISep reaches 0.87 against about
+            0.05 to 0.06 for Simple and DANN, and 0.26 to 0.34 for ColEI and DBPN. Zeroing out those small weights
+            leaves performance essentially unchanged, which supports using the measure.
+          </p>
+        </div>
+        <figure class="chart" style="margin-top: 16px">
+          <div class="paper">
+            <img src="/eisep/figures/modularity_sparsity.png" width="1133" height="366" alt="Signed modularity against number of clusters for seven models under directed and lifted spectral clustering, where EISep is highest, and a bar chart of sparsity where EISep is 0.87 and the others are between 0.05 and 0.34." loading="lazy" />
+          </div>
+          <figcaption>Signed modularity against number of clusters (A, B) and recurrent weight sparsity (C), on the multi-task benchmark.</figcaption>
+        </figure>
+      </section>
+
+      <section id="continual" class="block" aria-labelledby="continual-title">
+        <h2 id="continual-title">Continual learning</h2>
+        <p class="section-lede">
+          When tasks arrive one after another, their gradients interfere and the network forgets earlier tasks. A
+          modular network can reduce this by giving tasks different subspaces, which is what EISep's structure
+          suggests.
+        </p>
+        <h3 class="sub">Setup: four tasks in a 2&times;2 design</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Continual learning task design table">
+          <table class="data-table results">
+            <thead><tr><th scope="col"></th><th scope="col">No delay</th><th scope="col">Delay</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Respond to the stronger channel (Go)</th><td>Go</td><td>Delay Go</td></tr>
+              <tr><th scope="row">Respond to the weaker channel (Anti)</th><td>Anti</td><td>Delay Anti</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          The design separates the sensory-response mapping (Go vs. Anti) from the memory requirement (delay vs. no
+          delay). Each task is trained for 200 epochs in the order Go, Anti, Delay Go, Delay Anti, and the full round is
+          repeated 10 times, giving 40 task trials. The task rule is given on every trial, and performance on all four
+          tasks is tested after each one. Each model runs at its best learning rate from the multi-task sweep (Simple
+          0.005, EISep 0.01), with 5 seeds.
+        </p>
+
+        <figure class="chart" style="margin-top: 24px">
+          <div class="paper">
+            <img src="/eisep/figures/continual_learning.png" width="1256" height="597" alt="Four panels. A: average performance over 40 trials for EISep and Simple at two learning rates, with EISep rising and Simple staying near or below 0.5. B: gradient cosine similarity matrices. C: weight-update correlation matrices. D: performance as transfer strength grows." loading="lazy" />
+          </div>
+          <figcaption>
+            <strong>A.</strong> EISep keeps and improves performance across rounds, while Simple forgets earlier tasks.
+            <strong>B.</strong> Gradient similarity between tasks. <strong>C.</strong> Correlation between the weight updates each
+            task causes. <strong>D.</strong> Adding a Delay Go&rarr;Delay Anti update to the weights trained on Go shifts
+            EISep from Go toward Anti as the transfer strength &alpha; grows, but not Simple.
+          </figcaption>
+        </figure>
+
+        <div class="charts" style="margin-top: 24px">
+          <figure class="hbars"><figcaption><strong>Final-round test accuracy</strong> continual learning, each model at its best learning rate</figcaption>
+          <div class="hrow ei"><span class="name">EISep</span><span class="track"><i style="--v: 96.0%"></i></span><b>0.96</b></div>
+          <div class="hrow"><span class="name">Simple</span><span class="track"><i style="--v: 55.0%"></i></span><b>0.55</b></div>
+          <div class="hrow"><span class="name">DANN-SGD</span><span class="track"><i style="--v: 10.0%"></i></span><b>0.10</b></div>
+          <div class="hrow"><span class="name">DANN-Adam</span><span class="track"><i style="--v: 90.0%"></i></span><b>0.90</b></div>
+          <div class="hrow"><span class="name">ColEI-SGD</span><span class="track"><i style="--v: 49.0%"></i></span><b>0.49</b></div>
+          <div class="hrow"><span class="name">ColEI-Adam</span><span class="track"><i style="--v: 45.0%"></i></span><b>0.45</b></div>
+          <div class="hrow"><span class="name">DBPN</span><span class="track"><i style="--v: 79.0%"></i></span><b>0.79</b></div>
+          </figure>
+          <div class="prose">
+            <p>
+              At the final round, averaged over the four last trials, EISep scores 0.96 against Simple's 0.55. Only
+              DANN-Adam (0.90) comes close. The loss curves tell the same story: EISep's decoding loss is lower with far
+              fewer spikes.
+            </p>
+            <p>
+              Simple's loss blows up several times, reaching around 10<sup>26</sup> at a learning rate of 0.01, which is
+              the instability behind its forgetting.
+            </p>
+          </div>
+        </div>
+
+        <h3 class="sub">Less gradient interference</h3>
+        <div class="prose">
+          <p>
+            Cosine similarity between the average gradients for each task shows how the tasks interact. EISep has
+            <strong>high similarity for tasks with the same stimulus-response mapping</strong> (Go and Delay Go, Anti and
+            Delay Anti) and <strong>near-zero similarity for opposing tasks</strong> (Go and Anti). Simple shows
+            comparable similarity for both kinds. Similar tasks share a gradient direction in EISep, and conflicting
+            tasks are kept in separate directions.
+          </p>
+          <p>
+            The cumulative weight updates show structure too: positively correlated for same-type tasks and negatively
+            correlated for opposing ones in EISep, with no such pattern in Simple. The paper notes that negative update
+            correlations can sit alongside near-zero gradient similarity, since cumulative updates also depend on
+            optimizer dynamics and training history.
+          </p>
+        </div>
+        <div class="heats" style="margin-top: 16px">
+          <div class="heatwrap"><p class="heat-title">Gradient cosine similarity, EISep</p><div class="table-scroll" tabindex="0" role="region" aria-label="Gradient cosine similarity, EISep"><table class="heat"><thead><tr><th></th><th scope="col">Go</th><th scope="col">Anti</th><th scope="col">Delay Go</th><th scope="col">Delay Anti</th></tr></thead><tbody><tr><th scope="row">Go</th><td class="pos" style="--a: 0.00">&ndash;</td><td class="pos" style="--a: 0.13">0.07</td><td class="pos" style="--a: 0.55">0.30</td><td class="pos" style="--a: 0.13">0.07</td></tr><tr><th scope="row">Anti</th><td class="pos" style="--a: 0.13">0.07</td><td class="pos" style="--a: 0.00">&ndash;</td><td class="pos" style="--a: 0.20">0.11</td><td class="pos" style="--a: 1.00">0.55</td></tr><tr><th scope="row">Delay Go</th><td class="pos" style="--a: 0.55">0.30</td><td class="pos" style="--a: 0.20">0.11</td><td class="pos" style="--a: 0.00">&ndash;</td><td class="pos" style="--a: 0.13">0.07</td></tr><tr><th scope="row">Delay Anti</th><td class="pos" style="--a: 0.13">0.07</td><td class="pos" style="--a: 1.00">0.55</td><td class="pos" style="--a: 0.13">0.07</td><td class="pos" style="--a: 0.00">&ndash;</td></tr></tbody></table></div></div><div class="heatwrap"><p class="heat-title">Gradient cosine similarity, Simple</p><div class="table-scroll" tabindex="0" role="region" aria-label="Gradient cosine similarity, Simple"><table class="heat"><thead><tr><th></th><th scope="col">Go</th><th scope="col">Anti</th><th scope="col">Delay Go</th><th scope="col">Delay Anti</th></tr></thead><tbody><tr><th scope="row">Go</th><td class="pos" style="--a: 0.00">&ndash;</td><td class="pos" style="--a: 0.15">0.08</td><td class="pos" style="--a: 0.27">0.15</td><td class="pos" style="--a: 0.33">0.18</td></tr><tr><th scope="row">Anti</th><td class="pos" style="--a: 0.15">0.08</td><td class="pos" style="--a: 0.00">&ndash;</td><td class="pos" style="--a: 0.56">0.31</td><td class="pos" style="--a: 0.29">0.16</td></tr><tr><th scope="row">Delay Go</th><td class="pos" style="--a: 0.27">0.15</td><td class="pos" style="--a: 0.56">0.31</td><td class="pos" style="--a: 0.00">&ndash;</td><td class="pos" style="--a: 0.35">0.19</td></tr><tr><th scope="row">Delay Anti</th><td class="pos" style="--a: 0.33">0.18</td><td class="pos" style="--a: 0.29">0.16</td><td class="pos" style="--a: 0.35">0.19</td><td class="pos" style="--a: 0.00">&ndash;</td></tr></tbody></table></div></div><div class="heatwrap"><p class="heat-title">Cumulative weight-update correlation, EISep</p><div class="table-scroll" tabindex="0" role="region" aria-label="Cumulative weight-update correlation, EISep"><table class="heat"><thead><tr><th></th><th scope="col">Go</th><th scope="col">Anti</th><th scope="col">Delay Go</th><th scope="col">Delay Anti</th></tr></thead><tbody><tr><th scope="row">Go</th><td class="pos" style="--a: 0.00">&ndash;</td><td class="neg" style="--a: 0.84">&minus;0.27</td><td class="pos" style="--a: 0.53">0.17</td><td class="neg" style="--a: 0.56">&minus;0.18</td></tr><tr><th scope="row">Anti</th><td class="neg" style="--a: 0.84">&minus;0.27</td><td class="pos" style="--a: 0.00">&ndash;</td><td class="neg" style="--a: 0.75">&minus;0.24</td><td class="pos" style="--a: 0.53">0.17</td></tr><tr><th scope="row">Delay Go</th><td class="pos" style="--a: 0.53">0.17</td><td class="neg" style="--a: 0.75">&minus;0.24</td><td class="pos" style="--a: 0.00">&ndash;</td><td class="neg" style="--a: 1.00">&minus;0.32</td></tr><tr><th scope="row">Delay Anti</th><td class="neg" style="--a: 0.56">&minus;0.18</td><td class="pos" style="--a: 0.53">0.17</td><td class="neg" style="--a: 1.00">&minus;0.32</td><td class="pos" style="--a: 0.00">&ndash;</td></tr></tbody></table></div></div><div class="heatwrap"><p class="heat-title">Cumulative weight-update correlation, Simple</p><div class="table-scroll" tabindex="0" role="region" aria-label="Cumulative weight-update correlation, Simple"><table class="heat"><thead><tr><th></th><th scope="col">Go</th><th scope="col">Anti</th><th scope="col">Delay Go</th><th scope="col">Delay Anti</th></tr></thead><tbody><tr><th scope="row">Go</th><td class="pos" style="--a: 0.00">&ndash;</td><td class="neg" style="--a: 0.44">&minus;0.14</td><td class="neg" style="--a: 0.09">&minus;0.03</td><td class="pos" style="--a: 0.00">&ndash;</td></tr><tr><th scope="row">Anti</th><td class="neg" style="--a: 0.44">&minus;0.14</td><td class="pos" style="--a: 0.00">&ndash;</td><td class="neg" style="--a: 0.06">&minus;0.02</td><td class="neg" style="--a: 0.19">&minus;0.06</td></tr><tr><th scope="row">Delay Go</th><td class="neg" style="--a: 0.09">&minus;0.03</td><td class="neg" style="--a: 0.06">&minus;0.02</td><td class="pos" style="--a: 0.00">&ndash;</td><td class="neg" style="--a: 0.44">&minus;0.14</td></tr><tr><th scope="row">Delay Anti</th><td class="pos" style="--a: 0.00">&ndash;</td><td class="neg" style="--a: 0.19">&minus;0.06</td><td class="neg" style="--a: 0.44">&minus;0.14</td><td class="pos" style="--a: 0.00">&ndash;</td></tr></tbody></table></div></div>
+        </div>
+
+        <h3 class="sub">A weight-transfer test</h3>
+        <div class="prose">
+          <p>
+            To probe the geometry of the updates, the Delay Go&rarr;Delay Anti update is normalized, averaged over trials
+            and added to the weights after training on Go, <code>W_Go + &alpha;&middot;&Delta;W</code>. As &alpha; grows,
+            EISep's performance moves from Go to Anti, and Simple's doesn't. The paper reads this as EISep's weights
+            lying in a structured, low-dimensional subspace that allows parameter reuse and less interference, while
+            Simple's weights are more entangled.
+          </p>
+        </div>
+
+        <h3 class="sub">Task order matters</h3>
+        <div class="split wide-fig" style="margin-top: 0">
+          <div class="table-scroll" tabindex="0" role="region" aria-label="Training order table">
+            <table class="data-table results">
+              <thead><tr><th scope="col">Model</th><th scope="col">Alternating order</th><th scope="col">Grouped order</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">EISep</th><td>0.96</td><td>0.75</td></tr>
+<tr><th scope="row">Simple</th><td>0.55</td><td>0.51</td></tr>
+<tr><th scope="row">DANN-SGD</th><td>0.10</td><td>0.10</td></tr>
+<tr><th scope="row">DANN-Adam</th><td>0.90</td><td>0.76</td></tr>
+<tr><th scope="row">ColEI-SGD</th><td>0.49</td><td>0.40</td></tr>
+<tr><th scope="row">ColEI-Adam</th><td>0.45</td><td>0.37</td></tr>
+<tr><th scope="row">DBPN</th><td>0.79</td><td>0.63</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="prose">
+            <p>
+              The main experiments use an <strong>alternating</strong> order (Go, Anti, Delay Go, Delay Anti). A
+              <strong>grouped</strong> order (Go, Delay Go, Anti, Delay Anti) is harder for every model, and EISep falls
+              from 0.96 to 0.75 but keeps its edge over Simple.
+            </p>
+            <p>
+              The explanation offered is gradient interference: two similar tasks in a row push the network into a narrow
+              subspace, which makes the next, opposing task harder to learn. Alternating interleaves the conflicting
+              tasks.
+            </p>
+          </div>
+        </div>
+
+        <details class="fold">
+          <summary>More continual-learning curves</summary>
+          <div>
+            <div class="charts">
+              <figure class="chart">
+                <div class="paper"><img src="/eisep/figures/continual_curves.png" width="926" height="442" alt="Per-task training curves for EISep and Simple at learning rates 0.005 and 0.01 across 40 trials, and the average across tasks." loading="lazy" /></div>
+                <figcaption>Per-task test performance for EISep and Simple at two learning rates.</figcaption>
+              </figure>
+              <figure class="chart">
+                <div class="paper"><img src="/eisep/figures/continual_loss.png" width="658" height="742" alt="Decoding loss over 8000 epochs. EISep stays low. Simple at learning rates 0.005 and 0.01 has large loss blow-ups." loading="lazy" /></div>
+                <figcaption>Decoding loss over training. Note the log scale: Simple's spikes span many orders of magnitude.</figcaption>
+              </figure>
+            </div>
+            <figure class="chart" style="margin-top: 24px">
+              <div class="paper"><img src="/eisep/figures/continual_baselines.png" width="946" height="916" alt="Training curves for seven models at their best learning rates, a bar chart of final-round performance, and a plot of sparsity across trials." loading="lazy" /></div>
+              <figcaption>All seven models at their best learning rates (A&ndash;H), final-round performance (I) and sparsity across trials (J).</figcaption>
+            </figure>
+          </div>
+        </details>
+      </section>
+
+      <section id="rl" class="block" aria-labelledby="rl-title">
+        <h2 id="rl-title">Reinforcement learning</h2>
+        <p class="section-lede">
+          Reinforcement learning is known for unstable optimization and high-variance gradients, which are the problems
+          EISep's stable dynamics should help with.
+        </p>
+
+        <h3 class="sub">Setup</h3>
+        <div class="prose">
+          <p>
+            The agents use Advantage Actor-Critic (A2C), with the actor and critic as separate recurrent modules. That
+            allows four variants, depending on where EISep is used:
+          </p>
+        </div>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Actor-critic variants table" style="margin-top: 16px">
+          <table class="data-table results">
+            <thead><tr><th scope="col"></th><th scope="col">Actor: Simple</th><th scope="col">Actor: EISep</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Critic: Simple</th><td>Simple</td><td>EISep(A)</td></tr>
+              <tr><th scope="row">Critic: EISep</th><td>EISep(C)</td><td>EISep(A+C)</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <ul class="bullets" style="margin-top: 16px">
+          <li><strong>Lunar Lander</strong> (LunarLander-v3): a discrete control task with 4 actions. Episodes are capped at 500 steps.</li>
+          <li><strong>HalfCheetah</strong> (HalfCheetah-v5): a harder continuous control task. The backbone is upgraded from a vanilla RNN to an LSTM to speed up training.</li>
+        </ul>
+
+        <h3 class="sub">Results</h3>
+        <figure class="chart" style="margin-top: 0; max-width: 900px">
+          <div class="paper">
+            <img src="/eisep/figures/rl_results.png" width="1215" height="326" alt="A: a table of the four actor-critic variants. B: Lunar Lander rewards, 19.9 for Simple, 10.1 for EISep(A), 102.6 for EISep(C) and 133.9 for EISep(A+C). C: HalfCheetah rewards, 1687.0, 2020.0, 4332.4 and 3870.7." loading="lazy" />
+          </div>
+          <figcaption>Best performance across actor and critic learning rates for each variant. Error bars are standard errors.</figcaption>
+        </figure>
+        <div class="charts" style="margin-top: 24px">
+          <figure class="hbars"><figcaption><strong>Lunar Lander</strong> reward, best learning rates (chance level &minus;200.36)</figcaption>
+          <div class="hrow"><span class="name">Simple</span><span class="track"><i style="--v: 13.3%"></i></span><b>19.9</b></div>
+          <div class="hrow ei"><span class="name">EISep(A)</span><span class="track"><i style="--v: 6.7%"></i></span><b>10.1</b></div>
+          <div class="hrow ei"><span class="name">EISep(C)</span><span class="track"><i style="--v: 68.4%"></i></span><b>102.6</b></div>
+          <div class="hrow ei"><span class="name">EISep(A+C)</span><span class="track"><i style="--v: 89.3%"></i></span><b>133.9</b></div>
+          </figure>
+          <figure class="hbars"><figcaption><strong>HalfCheetah</strong> reward, best learning rates, LSTM backbone</figcaption>
+          <div class="hrow"><span class="name">Simple</span><span class="track"><i style="--v: 37.5%"></i></span><b>1687.0</b></div>
+          <div class="hrow ei"><span class="name">EISep(A)</span><span class="track"><i style="--v: 44.9%"></i></span><b>2020.0</b></div>
+          <div class="hrow ei"><span class="name">EISep(C)</span><span class="track"><i style="--v: 96.3%"></i></span><b>4332.4</b></div>
+          <div class="hrow ei"><span class="name">EISep(A+C)</span><span class="track"><i style="--v: 86.0%"></i></span><b>3870.7</b></div>
+          </figure>
+        </div>
+        <div class="prose" style="margin-top: 16px">
+          <p>
+            Every variant with an EISep <strong>critic</strong> clearly beats Simple on both tasks. An EISep actor alone
+            doesn't help on Lunar Lander (10.1 against 19.9) and helps only modestly on HalfCheetah (2020 against 1687),
+            so on these tasks most of the gain comes from the critic. EISep(A+C) is best on Lunar Lander
+            (133.9 against 19.9, with chance at about &minus;200) and EISep(C) is best on HalfCheetah (4332 against 1687).
+            Other Dale-constrained baselines also do worse than EISep on Lunar Lander. EISep also helps a plain
+            feedforward network, though by less than in the recurrent case, which suggests it eases gradient
+            instability that comes from the RL task itself as well as from recurrence.
+          </p>
+        </div>
+
+        <details class="fold">
+          <summary>Learning-rate sweeps, full tables</summary>
+          <div>
+            <p class="note" style="margin-top: 0">
+              Test return, mean &plusmn; standard error, with 5 training seeds and 20 test episodes each. Rows are critic
+              learning rates and columns are actor learning rates. The bold cell is the best learning-rate pair for each
+              variant over the whole grid of 9.
+            </p>
+            <h3 class="sub">Lunar Lander</h3>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Lunar Lander learning-rate sweep table"><table class="data-table sweep">
+<thead><tr><th scope="col">Critic lr</th><th scope="col">Variant</th><th scope="col">Actor lr 3e-4</th><th scope="col">Actor lr 1e-3</th><th scope="col">Actor lr 3e-3</th></tr></thead><tbody>
+<tr><th scope="row" rowspan="4">1.5e-3</th><td class="nw">Simple</td><td><b class="best">19.90 &plusmn; 5.21</b></td><td>14.60 &plusmn; 2.97</td><td>1.19 &plusmn; 5.62</td></tr>
+<tr><td class="nw">EISep(A)</td><td>&minus;54.30 &plusmn; 7.56</td><td>7.04 &plusmn; 3.08</td><td>&minus;5.25 &plusmn; 2.53</td></tr>
+<tr><td class="nw">EISep(C)</td><td>69.99 &plusmn; 7.51</td><td>66.74 &plusmn; 7.52</td><td>5.57 &plusmn; 11.14</td></tr>
+<tr><td class="nw">EISep(A+C)</td><td>&minus;75.01 &plusmn; 11.42</td><td>11.57 &plusmn; 2.24</td><td>31.98 &plusmn; 3.61</td></tr>
+<tr><th scope="row" rowspan="4">5e-3</th><td class="nw">Simple</td><td>10.63 &plusmn; 3.28</td><td>&minus;6.09 &plusmn; 2.68</td><td>&minus;17.44 &plusmn; 6.36</td></tr>
+<tr><td class="nw">EISep(A)</td><td>&minus;54.26 &plusmn; 10.73</td><td><b class="best">10.13 &plusmn; 3.94</b></td><td>&minus;0.69 &plusmn; 2.07</td></tr>
+<tr><td class="nw">EISep(C)</td><td><b class="best">102.57 &plusmn; 5.79</b></td><td>101.52 &plusmn; 10.22</td><td>61.33 &plusmn; 7.55</td></tr>
+<tr><td class="nw">EISep(A+C)</td><td>&minus;58.65 &plusmn; 8.92</td><td>45.41 &plusmn; 7.85</td><td><b class="best">133.91 &plusmn; 11.46</b></td></tr>
+<tr><th scope="row" rowspan="4">1.5e-2</th><td class="nw">Simple</td><td>2.98 &plusmn; 2.75</td><td>0.04 &plusmn; 2.07</td><td>14.09 &plusmn; 5.11</td></tr>
+<tr><td class="nw">EISep(A)</td><td>&minus;77.64 &plusmn; 12.96</td><td>9.75 &plusmn; 3.19</td><td>&minus;29.33 &plusmn; 3.74</td></tr>
+<tr><td class="nw">EISep(C)</td><td>70.89 &plusmn; 7.52</td><td>93.81 &plusmn; 7.89</td><td>14.11 &plusmn; 9.87</td></tr>
+<tr><td class="nw">EISep(A+C)</td><td>&minus;25.56 &plusmn; 6.63</td><td>37.88 &plusmn; 7.43</td><td>52.23 &plusmn; 9.68</td></tr>
+</tbody></table></div>
+            <h3 class="sub">HalfCheetah</h3>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="HalfCheetah learning-rate sweep table"><table class="data-table sweep">
+<thead><tr><th scope="col">Critic lr</th><th scope="col">Variant</th><th scope="col">Actor lr 3e-4</th><th scope="col">Actor lr 1e-3</th><th scope="col">Actor lr 3e-3</th></tr></thead><tbody>
+<tr><th scope="row" rowspan="4">1.5e-3</th><td class="nw">Simple</td><td>1387.94 &plusmn; 7.32</td><td>1503.11 &plusmn; 7.33</td><td>1581.90 &plusmn; 8.66</td></tr>
+<tr><td class="nw">EISep(A)</td><td>1379.76 &plusmn; 23.80</td><td>1570.41 &plusmn; 22.11</td><td>1659.70 &plusmn; 37.18</td></tr>
+<tr><td class="nw">EISep(C)</td><td>1510.74 &plusmn; 17.22</td><td>1550.80 &plusmn; 25.58</td><td>1781.78 &plusmn; 46.34</td></tr>
+<tr><td class="nw">EISep(A+C)</td><td>1359.10 &plusmn; 14.13</td><td>1623.82 &plusmn; 26.35</td><td>1585.68 &plusmn; 8.68</td></tr>
+<tr><th scope="row" rowspan="4">5e-3</th><td class="nw">Simple</td><td>1530.66 &plusmn; 5.55</td><td>1646.83 &plusmn; 18.94</td><td>1644.64 &plusmn; 13.33</td></tr>
+<tr><td class="nw">EISep(A)</td><td>1426.88 &plusmn; 24.39</td><td>1676.68 &plusmn; 36.92</td><td>1552.41 &plusmn; 20.62</td></tr>
+<tr><td class="nw">EISep(C)</td><td>3089.99 &plusmn; 56.89</td><td>2297.24 &plusmn; 89.07</td><td>2266.02 &plusmn; 68.28</td></tr>
+<tr><td class="nw">EISep(A+C)</td><td>2865.65 &plusmn; 92.40</td><td>2439.39 &plusmn; 102.15</td><td>1971.96 &plusmn; 73.05</td></tr>
+<tr><th scope="row" rowspan="4">1.5e-2</th><td class="nw">Simple</td><td>1592.10 &plusmn; 6.12</td><td>1670.19 &plusmn; 5.71</td><td><b class="best">1687.00 &plusmn; 20.22</b></td></tr>
+<tr><td class="nw">EISep(A)</td><td>1384.61 &plusmn; 23.61</td><td><b class="best">2019.97 &plusmn; 60.97</b></td><td>1693.77 &plusmn; 25.94</td></tr>
+<tr><td class="nw">EISep(C)</td><td>2870.01 &plusmn; 128.35</td><td>3591.95 &plusmn; 116.64</td><td><b class="best">4332.40 &plusmn; 64.58</b></td></tr>
+<tr><td class="nw">EISep(A+C)</td><td>2542.09 &plusmn; 138.04</td><td>3258.02 &plusmn; 133.81</td><td><b class="best">3870.66 &plusmn; 132.16</b></td></tr>
+</tbody></table></div>
+          </div>
+        </details>
+
+        <details class="fold">
+          <summary>RL training details</summary>
+          <div>
+            <ul class="bullets tight" style="margin-top: 0">
+              <li>Discount &gamma; = 0.99, GAE &lambda; = 0.95, entropy coefficient 0.01.</li>
+              <li>Actor learning rates 3&times;10<sup>&minus;4</sup>, 10<sup>&minus;3</sup>, 3&times;10<sup>&minus;3</sup>. Critic learning rates 1.5&times;10<sup>&minus;3</sup>, 5&times;10<sup>&minus;3</sup>, 1.5&times;10<sup>&minus;2</sup>. Separate optimizers for actor and critic.</li>
+              <li>Smooth L1 critic loss. Advantages are normalized in each batch.</li>
+              <li>10 parallel environments for Lunar Lander and 100 for HalfCheetah, 128 steps per environment per update, 1000 updates.</li>
+              <li>5 seeds, evaluated over 20 episodes per seed. About 10 hours for the RL sweep (5 seeds, 9 learning-rate pairs, 3 EISep variants).</li>
+            </ul>
+          </div>
+        </details>
+      </section>
+
+      <section id="dynamics" class="block" aria-labelledby="dynamics-title">
+        <h2 id="dynamics-title">Inside the network: smoother, more informative dynamics</h2>
+        <p class="section-lede">
+          To see what E&ndash;I separation does to the agent's internal state, the hidden activity of the actor is plotted
+          over a short clip of a Lunar Lander test episode.
+        </p>
+        <div class="split wide-fig">
+          <figure class="chart">
+            <div class="paper">
+              <img src="/eisep/figures/hidden_dynamics.png" width="668" height="832" alt="Hidden state traces over 34 timesteps: EISep traces are smooth and varied, Simple traces jitter at high frequency. Below, a bar chart of normalized mutual information, higher for EISep for both critic and actor." loading="lazy" />
+            </div>
+            <figcaption>
+              <strong>A.</strong> EISep's hidden dynamics are smooth and diverse. <strong>B.</strong> Simple's jitter at high frequency
+              and repeat, which looks like a collapse to low-dimensional limit cycles. <strong>C.</strong> Normalized mutual
+              information between HMM latent states and annotated environment phases.
+            </figcaption>
+          </figure>
+          <div class="prose">
+            <p>
+              How informative is the internal state about what the agent is doing? A Hidden Markov Model (5 latent
+              states) is fitted to the hidden trajectories without supervision. Separately, each Lunar Lander state is
+              labelled with a phase by fixed rules on the environment variables, such as free fall, touchdown preparation
+              and landing, without looking at the agent's internals. The <strong>normalized mutual information</strong>
+              between the two labellings measures how much of the environment the dynamics encode.
+            </p>
+            <p>
+              EISep is much higher than Simple for both actor and critic. The Simple critic's states have collapsed
+              and carry almost no information about the environment, and the Simple agent tends to hover near the ground
+              and rarely reaches well-defined landing phases.
+            </p>
+          </div>
+        </div>
+        <div class="charts" style="margin-top: 24px">
+          <figure class="chart">
+            <div class="paper"><img src="/eisep/figures/hmm_critic.png" width="707" height="488" alt="Critic hidden states, HMM transition matrices, HMM labels and environment phase labels for EISep(A+C) and Simple." loading="lazy" /></div>
+            <figcaption>Critic: hidden activity, HMM transition matrix, HMM labels and annotated phases, for EISep(A+C) and Simple.</figcaption>
+          </figure>
+          <figure class="chart">
+            <div class="paper"><img src="/eisep/figures/hmm_actor.png" width="717" height="492" alt="Actor hidden states, HMM transition matrices, HMM labels and environment phase labels for EISep(A+C) and Simple." loading="lazy" /></div>
+            <figcaption>Actor: the same panels. EISep's labels persist for long stretches, while Simple's flip rapidly.</figcaption>
+          </figure>
+        </div>
+        <p class="note">
+          Three more HMM measures agree. EISep's latent states are stickier (higher self-transition probability), its
+          actor has lower transition entropy, and both of its networks switch states far less often, all consistent with
+          smoother internal dynamics.
+        </p>
+      </section>
+
+      <section id="ablations" class="block" aria-labelledby="ablations-title">
+        <h2 id="ablations-title">What each design choice contributes</h2>
+        <p class="section-lede">
+          Each ablation removes or swaps one ingredient of EISep, to test whether the gains come from one trick or from
+          the combination.
+        </p>
+        <figure class="chart" style="margin-top: 0">
+          <div class="paper">
+            <img src="/eisep/figures/ablation_schematic.png" width="668" height="170" alt="EISep at the centre, with arrows to six variants: Cstr-Simple (architecture), EISep(N1/N2) (initialization), Abs-EISep (filter), Fixed-EISep (sign learnability) and EntryEI (sign granularity)." loading="lazy" />
+          </div>
+          <figcaption>The ablation variants, each changing one thing about EISep.</figcaption>
+        </figure>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Ablation variants table" style="margin-top: 16px">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row">Abs-EISep</th><td>Replaces the ReLU with an absolute value, <code>W = |W_0|D</code>.</td></tr>
+              <tr><th scope="row">Fixed-EISep</th><td>Fixes the sign matrix D after initialization.</td></tr>
+              <tr><th scope="row">EntryEI</th><td>Gives every individual weight its own learnable sign, <code>W = ReLU(W_0) &odot; K</code>. This has a larger hypothesis space but is less biologically realistic.</td></tr>
+              <tr><th scope="row">EISep(N1), EISep(N2)</th><td>The EISep form with ColEI-style (N1) and DBPN-style (N2) initialization.</td></tr>
+              <tr><th scope="row">Cstr-Simple</th><td>A Simple RNN with EISep's initialization, to test whether initialization alone explains the gains. DANN is excluded because its parameterization is fundamentally different.</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Ablation results table" style="margin-top: 24px">
+          <table class="data-table results">
+            <thead><tr><th scope="col">Model</th><th scope="col">Multi-task accuracy</th><th scope="col">Continual learning accuracy</th><th scope="col">Lunar Lander reward</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">EISep</th><td>0.98</td><td>0.96</td><td>133.91</td></tr>
+<tr><th scope="row">Simple</th><td>0.97</td><td>0.55</td><td>19.90</td></tr>
+<tr><th scope="row">Abs-EISep</th><td>0.94</td><td>0.00</td><td>92.03</td></tr>
+<tr><th scope="row">Fixed-EISep</th><td>0.98</td><td>0.51</td><td>56.75</td></tr>
+<tr><th scope="row">EntryEI</th><td>0.92</td><td>0.76</td><td>108.52</td></tr>
+<tr><th scope="row">EISep(N1)</th><td>0.97</td><td>0.78</td><td>71.24</td></tr>
+<tr><th scope="row">EISep(N2)</th><td>0.82</td><td>0.84</td><td>107.56</td></tr>
+<tr><th scope="row">Cstr-Simple</th><td>0.86</td><td>0.12</td><td>26.57</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="charts" style="margin-top: 24px">
+          <figure class="hbars"><figcaption><strong>Continual learning</strong> final-round test accuracy</figcaption>
+          <div class="hrow ei"><span class="name">EISep</span><span class="track"><i style="--v: 96.0%"></i></span><b>0.96</b></div>
+          <div class="hrow"><span class="name">Simple</span><span class="track"><i style="--v: 55.0%"></i></span><b>0.55</b></div>
+          <div class="hrow"><span class="name">Abs-EISep</span><span class="track"><i style="--v: 0.0%"></i></span><b>0.00</b></div>
+          <div class="hrow"><span class="name">Fixed-EISep</span><span class="track"><i style="--v: 51.0%"></i></span><b>0.51</b></div>
+          <div class="hrow"><span class="name">EntryEI</span><span class="track"><i style="--v: 76.0%"></i></span><b>0.76</b></div>
+          <div class="hrow"><span class="name">EISep(N1)</span><span class="track"><i style="--v: 78.0%"></i></span><b>0.78</b></div>
+          <div class="hrow"><span class="name">EISep(N2)</span><span class="track"><i style="--v: 84.0%"></i></span><b>0.84</b></div>
+          <div class="hrow"><span class="name">Cstr-Simple</span><span class="track"><i style="--v: 12.0%"></i></span><b>0.12</b></div>
+          </figure>
+          <figure class="hbars"><figcaption><strong>Reinforcement learning</strong> Lunar Lander reward</figcaption>
+          <div class="hrow ei"><span class="name">EISep</span><span class="track"><i style="--v: 89.3%"></i></span><b>133.9</b></div>
+          <div class="hrow"><span class="name">Simple</span><span class="track"><i style="--v: 13.3%"></i></span><b>19.9</b></div>
+          <div class="hrow"><span class="name">Abs-EISep</span><span class="track"><i style="--v: 61.4%"></i></span><b>92.0</b></div>
+          <div class="hrow"><span class="name">Fixed-EISep</span><span class="track"><i style="--v: 37.8%"></i></span><b>56.8</b></div>
+          <div class="hrow"><span class="name">EntryEI</span><span class="track"><i style="--v: 72.3%"></i></span><b>108.5</b></div>
+          <div class="hrow"><span class="name">EISep(N1)</span><span class="track"><i style="--v: 47.5%"></i></span><b>71.2</b></div>
+          <div class="hrow"><span class="name">EISep(N2)</span><span class="track"><i style="--v: 71.7%"></i></span><b>107.6</b></div>
+          <div class="hrow"><span class="name">Cstr-Simple</span><span class="track"><i style="--v: 17.7%"></i></span><b>26.6</b></div>
+          </figure>
+        </div>
+
+        <div class="prose" style="margin-top: 24px">
+          <p>
+            The ablations barely matter on the simplest benchmark and matter a lot on the hardest. On multi-task
+            learning Abs-EISep, Fixed-EISep, EntryEI and EISep(N1) stay within a few points of EISep, and Fixed-EISep even
+            ties it, so E&ndash;I separation alone is enough for relatively simple tasks. Only EISep(N2) (0.82) and
+            Cstr-Simple (0.86) fall further behind. On continual and reinforcement learning every ablation falls
+            behind, in places severely.
+          </p>
+        </div>
+        <ul class="bullets">
+          <li><strong>Learnable signs matter.</strong> Fixed-EISep drops to 0.51 on continual learning and 56.8 on Lunar Lander. A variant that starts from the signs of a trained EISep but reinitializes everything else does no better than fixed signs in RL, so what helps is adapting signs throughout training, not only finding a good starting configuration. Freezing signs partway through training also hurts continual learning and RL.</li>
+          <li><strong>The ReLU matters.</strong> Swapping it for an absolute value removes the sparsity advantage, lets the spectral radius grow without bound, and collapses continual learning to 0.00.</li>
+          <li><strong>Neuron-level separation beats a more flexible alternative.</strong> EntryEI has more freedom but underperforms EISep on every task, so the biologically realistic constraint is better than the larger hypothesis space.</li>
+          <li><strong>Initialization alone is not the story.</strong> Cstr-Simple, a vanilla RNN with EISep's initialization, reaches only 0.12 on continual learning and 26.6 on Lunar Lander.</li>
+          <li><strong>It is not just regularization.</strong> L1 regularization on Simple can reach EISep's level of sparsity on the supervised settings, but performance stays worse in continual learning and becomes unstable in multi-task learning. In RL, even extremely large L1 coefficients fail to reach comparable sparsity and give worse performance.</li>
+        </ul>
+
+        <h3 class="sub">Sensitivity</h3>
+        <ul class="bullets">
+          <li><strong>Hidden size.</strong> EISep stays robust as the network grows, while other models overfit and degrade, so the gap to Simple widens with size.</li>
+          <li><strong>Gumbel-Softmax temperature.</strong> A very low temperature approaches frozen signs and costs a little. A high one lets noise dominate, flipping signs and breaking the train-test match, which badly hurts multi-task and continual learning.</li>
+          <li><strong>Entropy coefficient.</strong> Without the entropy loss (&lambda;<sub>e</sub> = 0), signs keep occasionally flipping and performance drops significantly.</li>
+          <li><strong>Activation.</strong> Switching Softplus to ReLU barely affects multi-task learning, but RL training becomes unstable from repeated gradient explosions.</li>
+        </ul>
+        <div class="charts" style="margin-top: 24px">
+          <figure class="chart">
+            <div class="paper"><img src="/eisep/figures/hidden_size.png" width="753" height="1022" alt="Performance against hidden size for multi-task, continual and reinforcement learning, for the baselines and for the four actor-critic variants." loading="lazy" /></div>
+            <figcaption>Performance against hidden size (8 to 256) in multi-task (A), continual (B) and reinforcement learning (C).</figcaption>
+          </figure>
+          <figure class="chart">
+            <div class="paper"><img src="/eisep/figures/temperature.png" width="523" height="897" alt="EISep performance against Gumbel-Softmax temperature from 0.001 to 10 for multi-task, continual and reinforcement learning, with Simple as a dashed line." loading="lazy" /></div>
+            <figcaption>Performance against Gumbel-Softmax temperature. The dashed line is Simple.</figcaption>
+          </figure>
+        </div>
+        <figure class="chart" style="margin-top: 24px; max-width: 760px">
+          <div class="paper"><img src="/eisep/figures/training_order.png" width="747" height="436" alt="Continual learning bar charts for baselines and ablations under two training orders." loading="lazy" /></div>
+          <figcaption>Continual-learning performance for baselines (A, C) and ablations (B, D) under the alternating order (top) and the grouped order (bottom).</figcaption>
+        </figure>
+      </section>
+
+      <section id="limits" class="block" aria-labelledby="limits-title">
+        <h2 id="limits-title">Limits and honest caveats</h2>
+        <ul class="bullets" style="margin-top: 0">
+          <li><strong>Slower at low learning rates.</strong> EISep does worse than Simple when the learning rate is small, so there is a trade-off between stability and convergence speed. Adaptive methods to widen its stable range are future work.</li>
+          <li><strong>The benefit depends on the task.</strong> On supervised benchmarks where gradient instability isn't the main problem (the adding problem, sequential MNIST, a sorting task), EISep still beats most Dale-constrained models but its edge over Simple is much weaker. That fits the no-free-lunch idea: no inductive bias is best everywhere, and this one pays off where optimization is non-stationary or high-variance.</li>
+          <li><strong>Scale is untested.</strong> Models here have 64 hidden units, and larger sizes up to 256 look good, but it is unknown whether the advantage holds in much larger models or harder problems.</li>
+          <li><strong>It is not a faithful brain model.</strong> The excitatory-to-inhibitory ratio is typically around 4:1 in the brain, and long-range projections are mostly excitatory, and neither is reproduced. The aim is to learn why biological systems work, not to copy them.</li>
+          <li><strong>Learnable signs are a deliberate bend of biology.</strong> A neuron changing type seems unbiological, but training also stands in for developmental and evolutionary change. The signs settle early in training, in the first quarter, which is consistent with neuronal differentiation.</li>
+        </ul>
+      </section>
+
+      <section id="role" class="block" aria-labelledby="role-title">
+        <h2 id="role-title">My role</h2>
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Run experiments</h3>
+            <p>Run the training and evaluation experiments across the multi-task, continual and reinforcement learning settings.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Record and interpret results</h3>
+            <p>Record the results and work out what they mean, then discuss the insights with the PhD student.</p>
+          </li>
+          <li class="ghost" style="--c: var(--fg)">
+            <h3>Design new experiments</h3>
+            <p>Design new experiments to test competing hypotheses about why EISep works.</p>
+          </li>
+          <li class="ghost" style="--c: var(--muted-fg)">
+            <h3>Keep the literature current</h3>
+            <p>Maintain a systematic literature review of related papers, mainly from NeurIPS and Nature Neuroscience.</p>
+          </li>
+        </ul>
+      </section>
+
+      <section id="references" class="block" aria-labelledby="references-title">
+        <h2 id="references-title">References</h2>
+        <p class="section-lede">All 53 references from the paper, in the paper's order and numbering. Entries are reproduced as they appear in the paper.</p>
+        <ol class="refs">
+          <li>Kunihiko Fukushima. <cite>Neocognitron: A self-organizing neural network model for a mechanism of pattern recognition unaffected by shift in position.</cite> Biological cybernetics, 36(4):193–202, 1980.</li>
+          <li>Wolfram Schultz, Peter Dayan, and P Read Montague. <cite>A neural substrate of prediction and reward.</cite> Science, 275(5306):1593–1599, 1997.</li>
+          <li>James CR Whittington, Joseph Warren, and Timothy EJ Behrens. <cite>Relating transformers to models and neural representations of the hippocampal formation.</cite> arXiv preprint arXiv:2112.04035, 2021. <span class="ref-links"><a href="https://arxiv.org/abs/2112.04035" target="_blank" rel="noopener noreferrer">arXiv</a></span></li>
+          <li>Ziming Liu, Eric Gan, and Max Tegmark. <cite>Seeing is believing: Brain-inspired modular training for mechanistic interpretability.</cite> Entropy, 26(1):41, 2023.</li>
+          <li>Dong Kyum Kim, Jea Kwon, Meeyoung Cha, and Chul Lee. <cite>Transformer as a hippocampal memory consolidation model based on nmdar-inspired nonlinearity.</cite> Advances in Neural Information Processing Systems, 36:14637–14664, 2023.</li>
+          <li>Tianqin Li, Ziqi Wen, Yangfan Li, and Tai Sing Lee. <cite>Emergence of shape bias in convolutional neural networks through activation sparsity.</cite> Advances in Neural Information Processing Systems, 36:71755–71766, 2023.</li>
+          <li>Anthony Zador, Sean Escola, Blake Richards, Bence Ölveczky, Yoshua Bengio, Kwabena Boahen, Matthew Botvinick, Dmitri Chklovskii, Anne Churchland, Claudia Clopath, et al. <cite>Catalyzing next-generation artificial intelligence through neuroai.</cite> Nature communications, 14(1):1597, 2023.</li>
+          <li>Mengping Jiang, Linfan Gu, Mingyi Ma, Qin Li, Jonathan C Kao, and Weizhe Hong. <cite>Neural basis of cooperative behavior in biological and artificial intelligence systems.</cite> Science, page eadw8151, 2025.</li>
+          <li>Luke Darlow, Ciaran Regan, Sebastian Risi, Jeffrey Seely, and Llion Jones. <cite>Continuous thought machines.</cite> arXiv preprint arXiv:2505.05522, 2025. <span class="ref-links"><a href="https://arxiv.org/abs/2505.05522" target="_blank" rel="noopener noreferrer">arXiv</a></span></li>
+          <li>Mackenzie Weygandt Mathis. <cite>Leveraging insights from neuroscience to build adaptive artificial intelligence.</cite> Nature Neuroscience, pages 1–12, 2025.</li>
+          <li>Mahdi Ramadan, Cheng Tang, Nicholas Watters, and Mehrdad Jazayeri. <cite>Computational basis of hierarchical and counterfactual information processing.</cite> Nature Human Behaviour, pages 1–15, 2025.</li>
+          <li>Guan Wang, Jin Li, Yuhao Sun, Xing Chen, Changling Liu, Yue Wu, Meng Lu, Sen Song, and Yasin Abbasi Yadkori. <cite>Hierarchical reasoning model.</cite> arXiv preprint arXiv:2506.21734, 2025. <span class="ref-links"><a href="https://arxiv.org/abs/2506.21734" target="_blank" rel="noopener noreferrer">arXiv</a></span></li>
+          <li>Ruiyi Zhang, Xaq Pitkow, and Dora E Angelaki. <cite>Inductive biases of neural network modularity in spatial navigation.</cite> Science Advances, 10(29):eadk1256, 2024.</li>
+          <li>Martin Hofmann, Moritz Franz Peter Becker, Christian Tetzlaff, and Patrick Mäder. <cite>Concept transfer of synaptic diversity from biological to artificial neural networks.</cite> Nature communications, 16(1):5112, 2025.</li>
+          <li>Liyuan Wang, Xingxing Zhang, Qian Li, Mingtian Zhang, Hang Su, Jun Zhu, and Yi Zhong. <cite>Incorporating neuro-inspired adaptability for continual learning in artificial intelligence.</cite> Nature Machine Intelligence, 5(12):1356–1368, 2023.</li>
+          <li>Henry Dale. <cite>Pharmacology and nerve-endings</cite> 1935.</li>
+          <li>John Carew Eccles. <cite>From electrical to chemical transmission in the central nervous system: the closing address of the sir henry dale centennial symposium cambridge, 19 september 1975.</cite> Notes and records of the Royal Society of London, 30(2):219–230, 1976.</li>
+          <li>Aishwarya Balwani, Alex Q Wang, Farzaneh Najafi, and Hannah Choi. <cite>Constructing biologically constrained rnns via dale’s backpropagation and topologically informed pruning.</cite> Science Advances, 11(50):eadw4970, 2025.</li>
+          <li>Jonathan Cornford, Damjan Kalajdzievski, Marco Leite, Amélie Lamarquette, Dimitri M Kullmann, and Blake Richards. <cite>Learning to live with dale’s principle: Anns with separate excitatory and inhibitory units.</cite> BioRxiv, pages 2020–11, 2020.</li>
+          <li>Pingsheng Li, Jonathan Cornford, Arna Ghosh, and Blake Richards. <cite>Learning better with dale’s law: A spectral perspective.</cite> Advances in Neural Information Processing Systems, 36:944–956, 2023.</li>
+          <li>Carl van Vreeswijk and Haim Sompolinsky. <cite>Chaos in neuronal networks with balanced excitatory and inhibitory activity.</cite> Science, 274(5293):1724–1726, 1996.</li>
+          <li>Carl van Vreeswijk and Haim Sompolinsky. <cite>Chaotic balanced state in a model of cortical circuits.</cite> Neural computation, 10(6):1321–1371, 1998.</li>
+          <li>Junhao Liang, Zhuda Yang, and Changsong Zhou. <cite>Excitation–inhibition balance, neural criticality, and activities in neuronal circuits.</cite> The Neuroscientist, 31(1):31–46, 2025.</li>
+          <li>Sophie Denève and Christian K Machens. <cite>Efficient codes and balanced networks.</cite> Nature neuroscience, 19(3):375–382, 2016.</li>
+          <li>Gengshuo Tian, Shangyang Li, Tiejun Huang, and Si Wu. <cite>Excitation-inhibition balanced neural networks for fast signal detection.</cite> Frontiers in Computational Neuroscience, 14:79, 2020.</li>
+          <li>Sukbin Lim and Mark S Goldman. <cite>Balanced cortical microcircuitry for spatial working memory based on corrective feedback control.</cite> Journal of Neuroscience, 34(20):6790–6806, 2014.</li>
+          <li>Alessandro Ingrosso and LF Abbott. <cite>Training dynamically balanced excitatory-inhibitory networks.</cite> PloS one, 14(8):e0220547, 2019.</li>
+          <li>H Francis Song, Guangyu R Yang, and Xiao-Jing Wang. <cite>Training excitatory-inhibitory recurrent neural networks for cognitive tasks: a simple and flexible framework.</cite> PLoS computational biology, 12(2):e1004792, 2016.</li>
+          <li>Sun Minni, Li Ji-An, Theodore Moskovitz, Grace Lindsay, Kenneth Miller, Mario Dipoppa, and Guangyu Robert Yang. <cite>Understanding the functional and structural differences across excitatory and inhibitory neurons.</cite> bioRxiv, page 680439, 2019.</li>
+          <li>Veronica Chelu and Doina Precup. <cite>Excitatory-inhibitory dynamics in adaptive decision-making.</cite> In International Conference on Neural Information Processing, pages 65–79. Springer, 2025.</li>
+          <li>Eric Jang, Shixiang Gu, and Ben Poole. <cite>Categorical reparameterization with gumbel-softmax.</cite> arXiv preprint arXiv:1611.01144, 2016. <span class="ref-links"><a href="https://arxiv.org/abs/1611.01144" target="_blank" rel="noopener noreferrer">arXiv</a></span></li>
+          <li>Guangyu Robert Yang, Madhura R Joglekar, H Francis Song, William T Newsome, and Xiao-Jing Wang. <cite>Task representations in neural networks trained to perform many cognitive tasks.</cite> Nature neuroscience, 22(2):297–306, 2019.</li>
+          <li>Laura N Driscoll, Krishna Shenoy, and David Sussillo. <cite>Flexible multitask computation in recurrent networks utilizes shared dynamical motifs.</cite> Nature Neuroscience, 27(7):1349–1363, 2024.</li>
+          <li>Stephen Grossberg. <cite>The complementary brain: Unifying brain dynamics and modularity.</cite> Trends in cognitive sciences, 4(6):233–246, 2000.</li>
+          <li>Maxwell A Bertolero, BT Thomas Yeo, and Mark D’Esposito. <cite>The modular and integrative functional architecture of the human brain.</cite> Proceedings of the National Academy of Sciences, 112(49):E6798–E6807, 2015.</li>
+          <li>Kong-Fatt Wong and Xiao-Jing Wang. <cite>A recurrent network mechanism of time integration in perceptual decisions.</cite> Journal of Neuroscience, 26(4):1314–1328, 2006.</li>
+          <li>Ashok Litwin-Kumar, Kameron Decker Harris, Richard Axel, Haim Sompolinsky, and LF Abbott. <cite>Optimal degrees of synaptic connectivity.</cite> Neuron, 93(5):1153–1164, 2017.</li>
+          <li>Rieke Fruengel and Marcel Oberlaender. <cite>Sparse connectivity enables efficient information processing in cortex-like artificial neural networks.</cite> Frontiers in Neural Circuits, 19:1528309, 2025.</li>
+          <li>Brian Bartoldson, Ari Morcos, Adrian Barbu, and Gordon Erlebacher. <cite>The generalization-stability tradeoff in neural network pruning.</cite> Advances in neural information processing systems, 33:20852–20864, 2020.</li>
+          <li>Torsten Hoefler, Dan Alistarh, Tal Ben-Nun, Nikoli Dryden, and Alexandra Peste. <cite>Sparsity in deep learning: Pruning and growth for efficient inference and training in neural networks.</cite> Journal of Machine Learning Research, 22(241):1–124, 2021.</li>
+          <li>Michael McCloskey and Neal J Cohen. <cite>Catastrophic interference in connectionist networks: The sequential learning problem.</cite> In Psychology of learning and motivation, volume 24, pages 109–165. Elsevier, 1989.</li>
+          <li>Liyuan Wang, Xingxing Zhang, Hang Su, and Jun Zhu. <cite>A comprehensive survey of continual learning: Theory, method and application.</cite> IEEE transactions on pattern analysis and machine intelligence, 46(8):5362–5383, 2024.</li>
+          <li>Lea Duncker, Laura Driscoll, Krishna V Shenoy, Maneesh Sahani, and David Sussillo. <cite>Organizing recurrent network dynamics by task-computation to enable continual learning.</cite> Advances in neural information processing systems, 33:14387–14397, 2020.</li>
+          <li>Volodymyr Mnih, Koray Kavukcuoglu, David Silver, Andrei A Rusu, Joel Veness, Marc G Bellemare, Alex Graves, Martin Riedmiller, Andreas K Fidjeland, Georg Ostrovski, et al. <cite>Human-level control through deep reinforcement learning.</cite> nature, 518(7540):529–533, 2015.</li>
+          <li>Volodymyr Mnih, Adria Puigdomenech Badia, Mehdi Mirza, Alex Graves, Timothy Lillicrap, Tim Harley, David Silver, and Koray Kavukcuoglu. <cite>Asynchronous methods for deep reinforcement learning.</cite> In International conference on machine learning, pages 1928–1937. PmLR, 2016.</li>
+          <li>Mark Towers, Ariel Kwiatkowski, Jordan Terry, John U Balis, Gianluca De Cola, Tristan Deleu, Manuel Goulão, Andreas Kallinteris, Markus Krimmel, Arjun KG, et al. <cite>Gymnasium: A standard interface for reinforcement learning environments.</cite> arXiv preprint arXiv:2407.17032, 2024. <span class="ref-links"><a href="https://arxiv.org/abs/2407.17032" target="_blank" rel="noopener noreferrer">arXiv</a></span></li>
+          <li>Paweł Wawrzyński. <cite>A cat-like robot real-time learning to run.</cite> In International Conference on Adaptive and Natural Computing Algorithms, pages 380–390. Springer, 2009.</li>
+          <li>Qingyang Wang, Albert Cardona, Marta Zlatic, Joshua T Vogelstein, and Carey E Priebe. <cite>Why do we have so many excitatory neurons?</cite> bioRxiv, pages 2024–09, 2024.</li>
+          <li>Armen Stepanyants, Luis M Martinez, Alex S Ferecskó, and Zoltán F Kisvárday. <cite>The fractions of short-and long-range connections in the visual cortex.</cite> Proceedings of the National Academy of Sciences, 106(9):3555–3560, 2009.</li>
+          <li>David H Wolpert and William G Macready. <cite>No free lunch theorems for optimization.</cite> IEEE transactions on evolutionary computation, 1(1):67–82, 2002.</li>
+          <li>Peter Y Wang, Yi Sun, Richard Axel, LF Abbott, and Guangyu Robert Yang. <cite>Evolving the olfactory system with machine learning.</cite> Neuron, 109(23):3879–3892, 2021.</li>
+          <li>Hado Van Hasselt, Arthur Guez, and David Silver. <cite>Deep reinforcement learning with double q-learning.</cite> In Proceedings of the AAAI conference on artificial intelligence, volume 30, 2016.</li>
+          <li>Aviral Kumar, Aurick Zhou, George Tucker, and Sergey Levine. <cite>Conservative q-learning for offline reinforcement learning.</cite> Advances in neural information processing systems, 33:1179–1191, 2020.</li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/#work">&larr; Back to all projects</a>
+    </footer>
+
+  </body>
+</html>

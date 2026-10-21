@@ -1,0 +1,1 @@
+import{t as e}from"./projects-D6KBgP7A.js";for(let t of document.querySelectorAll(`[data-profile-name]`))t.textContent=e.name;

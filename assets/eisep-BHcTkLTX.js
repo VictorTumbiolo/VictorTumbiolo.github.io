@@ -1,0 +1,1 @@
+import"./projects-D6KBgP7A.js";import"./project-page-YFq_ndGV.js";var e=document.querySelectorAll(`video[data-autoplay]`);if(!matchMedia(`(prefers-reduced-motion: reduce)`).matches){let t=new IntersectionObserver(e=>{for(let t of e){let e=t.target;t.isIntersecting?e.play().catch(()=>{}):e.pause()}},{threshold:.5});e.forEach(e=>t.observe(e))}

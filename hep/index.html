@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Dark Matter Collider Simulation: a chained workflow from a dark matter Lagrangian in Mathematica, through MadGraph, Pythia and GEANT4, to analysis in the EiC simulator."
+    />
+    <title>Dark Matter Collider Simulation</title>
+    <script type="module" crossorigin src="/assets/hep-BHcTkLTX.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/projects-D6KBgP7A.js">
+    <link rel="modulepreload" crossorigin href="/assets/project-page-YFq_ndGV.js">
+    <link rel="stylesheet" crossorigin href="/assets/projects-BDO5pT66.css">
+  </head>
+  <body>
+    <a class="skip" href="#overview">Skip to content</a>
+
+    <header class="site-header">
+      <a class="brand" href="/" data-profile-name>Home</a>
+      <nav aria-label="Primary">
+        <a href="/#work">All projects</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="project-hero" aria-labelledby="page-title">
+        <a class="back" href="/#work">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M12 8H4M7.5 4.5L4 8l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+          All projects
+        </a>
+        <p class="eyebrow">Project &middot; High-energy physics &middot; Dark matter &middot; Simulation</p>
+        <h1 id="page-title">Dark Matter Collider Simulation</h1>
+        <p class="lede">
+          A chained simulation workflow that takes a <strong>custom dark matter model</strong>, written as a
+          Lagrangian with dark matter equations, all the way to <strong>simulated detector data and analysis</strong>.
+          The theory is defined in Mathematica, the collision is generated in MadGraph and Pythia, the detector
+          response comes from GEANT4, and the results are analysed in the EiC simulator.
+        </p>
+        <div class="actions">
+          <a class="button" href="#demo">Watch it run</a>
+          <a class="button secondary" href="#pipeline">The pipeline</a>
+          <a class="button secondary" href="#role">My role</a>
+        </div>
+        <dl class="facts">
+          <div><dt>Field</dt><dd>High-energy physics (HEP)</dd></div>
+          <div><dt>Theory</dt><dd>Dark matter Lagrangian</dd></div>
+          <div><dt>Pipeline</dt><dd>5 chained tools</dd></div>
+          <div><dt>Detector</dt><dd>Custom GEANT4 geometry</dd></div>
+          <div><dt>My part</dt><dd>Software and integration</dd></div>
+        </dl>
+      </section>
+
+      <nav class="toc" aria-label="On this page">
+        <a href="#overview">Overview</a>
+        <a href="#analogy">The idea</a>
+        <a href="#pipeline">Pipeline</a>
+        <a href="#demo">Demo</a>
+        <a href="#tools">The five tools</a>
+        <a href="#used">How it was used</a>
+        <a href="#role">My role</a>
+        <a href="#poster">Poster</a>
+        <a href="#references">References</a>
+      </nav>
+
+      <section id="overview" class="block" aria-labelledby="overview-title">
+        <h2 id="overview-title">What it is</h2>
+        <div class="prose">
+          <p>
+            High-energy physics (HEP) studies the smallest building blocks of matter by smashing particles
+            together at enormous energies and looking at what comes out. This project studies <strong>dark
+            matter particle collisions</strong>: collisions in which a hypothetical dark matter particle could be
+            produced. Dark matter is thought to make up a significant portion of the universe, yet it remains
+            largely undetected.
+          </p>
+          <p>
+            The model behind the collisions is a <strong>Lagrangian</strong>, a single mathematical expression that
+            encodes every particle in a theory, its properties and how the particles interact. Here it is a custom
+            Lagrangian that includes dark matter equations and the new dark particles. The project's job is to
+            predict what those particles would look like when they fly out of a collision, and what a detector
+            would record if they did.
+          </p>
+          <p>
+            No single program does all of that, so the project is a <strong>pipeline</strong>: five tools chained
+            together, where the output of each becomes the input of the next. Change the theory at the start and
+            its effect can be followed through to detector-level results without redoing the plumbing by hand.
+          </p>
+        </div>
+        <div class="callout warn" style="margin-top: 24px">
+          <p>
+            <strong>Who did what.</strong> The physics model itself was specified by a PhD student collaborator. My
+            contribution was the software and integration side: building the custom model in Mathematica, getting it
+            into MadGraph, connecting every tool into one end-to-end pipeline, and working with the detector geometry
+            in GEANT4. Details are in <a href="#role">My role</a>.
+          </p>
+        </div>
+      </section>
+
+      <section id="analogy" class="block" aria-labelledby="analogy-title">
+        <h2 id="analogy-title">The idea, with watches</h2>
+        <div class="prose">
+          <p>
+            Imagine smashing two watches together at high speed. You don't care about the watches themselves. You
+            care about the tiny gears, springs and screws that fly out, because those reveal how a watch is built
+            on the inside. Now imagine one of those watches might contain a part nobody has ever seen before. The
+            job is to predict what that mystery part would look like when it flies out, and what a detector would
+            record if it did.
+          </p>
+        </div>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Analogy table">
+          <table class="data-table results">
+            <thead><tr><th scope="col">Step</th><th scope="col">Watch analogy</th><th scope="col">Tool</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">Write the rulebook for what parts can exist, including the new mystery part</th><td>The blueprint for the watches</td><td>Mathematica</td></tr>
+              <tr><th scope="row">Simulate the moment of impact</th><td>The instant the two watches hit</td><td>MadGraph</td></tr>
+              <tr><th scope="row">Simulate the debris breaking apart and settling into stable pieces</th><td>Gears and springs scattering and shattering further</td><td>Pythia</td></tr>
+              <tr><th scope="row">Simulate how the debris hits the sensors</th><td>The camera and sensors catching the flying parts</td><td>GEANT4</td></tr>
+              <tr><th scope="row">Make sense of what the sensors recorded</th><td>Reconstructing what happened from the data</td><td>EiC Simulator</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <details class="fold">
+          <summary>Terms used on this page</summary>
+          <div>
+            <div class="table-scroll" tabindex="0" role="region" aria-label="Glossary table">
+              <table class="data-table files">
+                <tbody>
+                  <tr><th scope="row">Lagrangian</th><td>One expression that encodes every particle in a model, its properties and how the particles interact.</td></tr>
+                  <tr><th scope="row">Feynman diagram</th><td>A picture of one way a collision can happen. Lines are particles and the points where they meet are interactions.</td></tr>
+                  <tr><th scope="row">Cross section</th><td>The probability of a given outcome of a collision.</td></tr>
+                  <tr><th scope="row">Hard scatter</th><td>The initial, highest-energy moment of a collision, where the fundamental particles interact and the primary particles are produced.</td></tr>
+                  <tr><th scope="row">Parton shower</th><td>Particles radiating and splitting into cascades of more particles.</td></tr>
+                  <tr><th scope="row">Hadronization</th><td>Quarks and gluons cannot exist alone, so they bind into composite particles called hadrons, such as protons, pions and kaons.</td></tr>
+                  <tr><th scope="row">Final state</th><td>The long-lived, detectable particles that actually leave the collision point.</td></tr>
+                  <tr><th scope="row">UFO model</th><td>A standard model format that event generators such as MadGraph can read.</td></tr>
+                  <tr><th scope="row">LHE file</th><td>Les Houches Event format, the usual file for a list of freshly created particles.</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section id="pipeline" class="block" aria-labelledby="pipeline-title">
+        <h2 id="pipeline-title">The pipeline</h2>
+        <p class="section-lede">
+          Mathematica defines the physics. MadGraph and Pythia simulate the collision in two stages. GEANT4 simulates
+          the detector, and the EiC simulator analyses what it recorded.
+        </p>
+
+        <figure class="diagram">
+          <div class="diagram-scroll" tabindex="0" role="region" aria-label="Pipeline diagram (scrollable)">
+            <svg viewBox="0 0 920 190" width="920" height="190" role="img" aria-labelledby="pipe-title pipe-desc">
+              <title id="pipe-title">Mathematica, MadGraph, Pythia, GEANT4, EiC Simulator</title>
+              <desc id="pipe-desc">
+                Five tools in a row. Mathematica defines the theory and produces model files. MadGraph simulates the
+                hard scatter and produces primary-particle events. Pythia simulates showering, hadronization and
+                decays and produces final-state particles. GEANT4 simulates the detector and produces simulated
+                detector signals. The EiC simulator analyses the results and produces analysis output.
+              </desc>
+              <defs>
+                <marker id="pipe-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M0 0L10 5L0 10z" class="dg-head" />
+                </marker>
+              </defs>
+
+              <text class="dg-tag" x="10" y="20">THEORY</text>
+              <text class="dg-tag" x="196" y="20">THE COLLISION</text>
+              <text class="dg-tag" x="568" y="20">DETECTOR</text>
+              <text class="dg-tag" x="754" y="20">ANALYSIS</text>
+              <path class="dg-line" d="M10 30H166M196 30H538M568 30H724M754 30H910" />
+
+              <g class="dg-box dg-main"><rect x="10" y="50" width="156" height="100" /><text x="88" y="84" text-anchor="middle">Mathematica</text><text class="dg-sub" x="88" y="105" text-anchor="middle">The theory</text><text class="dg-sub" x="88" y="126" text-anchor="middle">out: UFO model files</text></g>
+              <g class="dg-box"><rect x="196" y="50" width="156" height="100" /><text x="274" y="84" text-anchor="middle">MadGraph</text><text class="dg-sub" x="274" y="105" text-anchor="middle">The impact</text><text class="dg-sub" x="274" y="126" text-anchor="middle">out: hard-scatter events</text></g>
+              <g class="dg-box"><rect x="382" y="50" width="156" height="100" /><text x="460" y="84" text-anchor="middle">Pythia</text><text class="dg-sub" x="460" y="105" text-anchor="middle">The debris</text><text class="dg-sub" x="460" y="126" text-anchor="middle">out: final-state particles</text></g>
+              <g class="dg-box"><rect x="568" y="50" width="156" height="100" /><text x="646" y="84" text-anchor="middle">GEANT4</text><text class="dg-sub" x="646" y="105" text-anchor="middle">The detector</text><text class="dg-sub" x="646" y="126" text-anchor="middle">out: detector signals</text></g>
+              <g class="dg-box"><rect x="754" y="50" width="156" height="100" /><text x="832" y="84" text-anchor="middle">EiC Simulator</text><text class="dg-sub" x="832" y="105" text-anchor="middle">The analysis</text><text class="dg-sub" x="832" y="126" text-anchor="middle">out: analysis results</text></g>
+
+              <path class="dg-line" d="M166 100H196" marker-end="url(#pipe-arrow)" />
+              <path class="dg-line" d="M352 100H382" marker-end="url(#pipe-arrow)" />
+              <path class="dg-line" d="M538 100H568" marker-end="url(#pipe-arrow)" />
+              <path class="dg-line" d="M724 100H754" marker-end="url(#pipe-arrow)" />
+            </svg>
+          </div>
+          <figcaption>
+            Each tool's output is the next tool's input. Mathematica (highlighted) simulates nothing: it defines the
+            physics that the other four then simulate and analyse.
+          </figcaption>
+        </figure>
+
+        <h3 class="sub">Summary</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Pipeline summary table">
+          <table class="data-table">
+            <thead>
+              <tr><th scope="col">Software</th><th scope="col">Role in pipeline</th><th scope="col">Collision stage covered</th><th scope="col">Input</th><th scope="col">Output</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">Mathematica</th><td>Define the theory</td><td>None (defines the physics)</td><td>Lagrangian and dark matter equations</td><td>Model files for MadGraph</td></tr>
+              <tr><th scope="row">MadGraph</th><td>Hard scatter</td><td>Initial high-energy interaction</td><td>Custom model</td><td>Primary-particle events</td></tr>
+              <tr><th scope="row">Pythia</th><td>Showering, hadronization, decays</td><td>After the hard scatter, up to final-state particles</td><td>MadGraph events</td><td>Final-state particles</td></tr>
+              <tr><th scope="row">GEANT4</th><td>Detector simulation</td><td>None (detector response)</td><td>Final-state particles and detector geometry</td><td>Simulated detector signals</td></tr>
+              <tr><th scope="row">EiC Simulator</th><td>Analysis</td><td>None (analyses results)</td><td>Detector-level results</td><td>Analysis output</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <details class="fold">
+          <summary>The original pipeline sketch</summary>
+          <div>
+            <figure class="shot" style="max-width: 900px">
+              <img src="/hep/figures/pipeline_sketch.png" width="1045" height="423" alt="Hand-drawn pipeline diagram: Mathematica feeds MadGraph, which feeds Pythia, GEANT4 and EIC Software in a row. Particle info is labelled above MadGraph, and HTML info and diagrams are written to a local directory." loading="lazy" />
+              <figcaption>An early design sketch of the pipeline: the model flows from Mathematica into MadGraph, then along the chain to the EIC software, and MadGraph's HTML info and diagrams are written to a local directory.</figcaption>
+            </figure>
+          </div>
+        </details>
+      </section>
+
+      <section id="demo" class="block" aria-labelledby="demo-title">
+        <h2 id="demo-title">Watch it run</h2>
+        <p class="section-lede">
+          A walkthrough of the pipeline on screen, and a short clip of GEANT4 drawing a simulated collision.
+        </p>
+
+        <article class="playback wide">
+          <video
+            controls
+            playsinline
+            preload="none"
+            width="1920"
+            height="1080"
+            poster="/hep/playback/demo.jpg"
+            style="--vw: 1120px"
+            aria-label="Screen recording of the pipeline: exporting a model from Mathematica, generating events in MadGraph, showering them in Pythia and plotting a histogram in ROOT"
+          >
+            <source src="/hep/playback/demo.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>Walkthrough</h3>
+            <p>
+              A screen recording of the workflow, about four minutes long and silent. The example model is the
+              Standard Model, which makes a convenient stand-in for a first run. It starts in Mathematica, where
+              FeynRules loads the model and writes it out as a UFO directory. MadGraph then loads that model and
+              generates events, Pythia takes over for the later stages of the collision, and the results are plotted
+              in ROOT. Press play: it is not set to autoplay, and the file is about 10&nbsp;MB.
+            </p>
+            <p>
+              This is the most recent demo I could find, but it does not show the fully completed pipeline end to
+              end. It covers Mathematica to Pythia. At this point in the project, the Pythia output was fed by hand
+              into GEANT4 and, later, into the EiC simulator.
+            </p>
+          </div>
+        </article>
+
+        <article class="playback wide">
+          <video
+            data-autoplay
+            muted
+            loop
+            playsinline
+            controls
+            preload="metadata"
+            width="1280"
+            height="720"
+            poster="/hep/playback/geant4.jpg"
+            style="--vw: 880px"
+            aria-label="Phone recording of a monitor showing GEANT4 drawing the tracks of a simulated collision inside a box-shaped detector volume, rotating between events"
+          >
+            <source src="/hep/playback/geant4.mp4" type="video/mp4" />
+          </video>
+          <div class="playback-text">
+            <h3>GEANT4 collision</h3>
+            <p>
+              A short phone recording of the GEANT4 viewer. Tracks of the particles from one simulated collision
+              fan out from the interaction point through the detector volume, and the view rotates so the
+              three-dimensional structure is visible. It loops while it is on screen.
+            </p>
+          </div>
+        </article>
+      </section>
+
+      <section id="tools" class="block" aria-labelledby="tools-title">
+        <h2 id="tools-title">The five tools</h2>
+        <p class="section-lede">What each tool is, what it does in particle physics, and which part of the collision it handles.</p>
+
+        <h3 class="sub">1. Mathematica <span class="aside">the theory</span></h3>
+        <div class="prose">
+          <p>
+            <strong>What it is.</strong> A general-purpose symbolic computation system from Wolfram. It can
+            manipulate equations algebraically, not just crunch numbers, which makes it a standard tool for
+            writing down theoretical physics models.
+          </p>
+          <p>
+            <strong>What it does here.</strong> Physicists describe a theory with a Lagrangian. In Mathematica,
+            packages such as FeynRules turn a Lagrangian into the interaction rules (Feynman rules) that simulators
+            need, and export them in a standard model format that event generators like MadGraph can read.
+          </p>
+          <p>
+            <strong>Part of the collision it handles.</strong> None directly. Mathematica does not simulate
+            collisions. It defines the <em>physics</em> that the later tools simulate.
+          </p>
+        </div>
+        <div class="split wide-fig" style="margin-top: 24px">
+          <figure class="shot">
+            <img src="/hep/figures/dark_gauge_group.png" width="355" height="398" alt="Mathematica model code defining two U(1) gauge groups, one dark with gauge boson Xs and charge 0, and one for the Standard Model hypercharge with gauge boson B and charge Y" loading="lazy" />
+            <figcaption>Part of the model file. A dark gauge group (<code>U1D</code>, gauge boson <code>Xs</code>) is defined next to its non-dark counterpart, the Standard Model hypercharge group (<code>U1Y</code>, gauge boson <code>B</code>).</figcaption>
+          </figure>
+          <figure class="chart">
+            <div class="paper">
+              <img src="/hep/figures/sm_lagrangian.png" width="627" height="602" alt="The Standard Model Lagrangian, a long block of equations" loading="lazy" />
+            </div>
+            <figcaption>The Standard Model Lagrangian, <code>L_SM</code>. The dark matter model is a Lagrangian of this kind, extended with dark particles, their properties and their interactions.</figcaption>
+          </figure>
+        </div>
+
+        <h3 class="sub">2. MadGraph <span class="aside">the impact</span></h3>
+        <div class="prose">
+          <p>
+            <strong>What it is.</strong> MadGraph (MadGraph5_aMC@NLO) is a Monte Carlo event generator that
+            calculates what happens in the core particle interaction.
+          </p>
+          <p>
+            <strong>What it does.</strong> Given a model and a collision process (for example, &ldquo;two protons
+            collide and produce dark matter particles&rdquo;), it generates all the possible Feynman diagrams for
+            that process, calculates the probability (cross section) of each outcome, and produces simulated
+            collision events by randomly sampling those probabilities.
+          </p>
+          <p>
+            <strong>Part of the collision it handles.</strong> The <strong>hard scatter</strong>, the initial,
+            highest-energy moment where the fundamental particles interact and the primary particles are produced.
+            This is &ldquo;part 1&rdquo; of the collision. Its output is a list of freshly created particles,
+            typically in the Les Houches Event (LHE) file format.
+          </p>
+        </div>
+        <figure class="chart" style="max-width: 420px; margin-top: 24px">
+          <div class="paper">
+            <img src="/hep/figures/feynman.png" width="486" height="430" alt="A Feynman diagram: an electron exchanges a photon with a target and emits a wavy line labelled A prime" loading="lazy" />
+          </div>
+          <figcaption>An example Feynman diagram from a collision. An electron (<code>e&minus;</code>) exchanges a photon with a target (<code>A_Z</code>, dashed) and radiates <code>A&prime;</code> (the wavy line at the top right), the dark particle.</figcaption>
+        </figure>
+
+        <h3 class="sub">3. Pythia <span class="aside">the debris</span></h3>
+        <div class="prose">
+          <p>
+            <strong>What it is.</strong> A Monte Carlo event generator specialized in everything that happens
+            <em>after</em> the hard scatter.
+          </p>
+        </div>
+        <ul class="bullets">
+          <li><strong>Parton showering.</strong> Particles radiate and split into cascades of more particles.</li>
+          <li><strong>Hadronization.</strong> Quarks and gluons cannot exist alone, so they bind together into composite particles (hadrons) such as protons, pions and kaons.</li>
+          <li><strong>Decays.</strong> Unstable particles decay into lighter ones until only long-lived, detectable particles remain.</li>
+          <li><strong>Underlying event.</strong> The &ldquo;leftover&rdquo; interactions from the rest of the colliding particles.</li>
+        </ul>
+        <div class="prose" style="margin-top: 16px">
+          <p>
+            <strong>Part of the collision it handles.</strong> Everything from right after the hard scatter to the
+            final set of particles that would leave the collision point. It picks up exactly where MadGraph leaves
+            off.
+          </p>
+        </div>
+        <figure class="shot" style="max-width: 760px; margin-top: 24px">
+          <img src="/hep/figures/event_display.png" width="1007" height="492" alt="An event display of a collision: a dense burst of tracks from the centre inside concentric detector layers, with three red lines leaving the detector and yellow blocks around the outside" loading="lazy" />
+          <figcaption>Where MadGraph ends and Pythia picks up. At the centre is the hard scatter. Everything radiating outward from it, the showers, hadrons and decays, is the stage Pythia simulates. An illustrative event display.</figcaption>
+        </figure>
+
+        <h3 class="sub">4. GEANT4 <span class="aside">the detector</span></h3>
+        <div class="prose">
+          <p>
+            <strong>What it is.</strong> A C++ toolkit developed at CERN for simulating how particles travel through
+            and interact with matter.
+          </p>
+          <p>
+            <strong>What it does.</strong> You describe a detector, including its geometry, shapes, positions and
+            materials, and GEANT4 tracks every particle through it. It models the physical processes along the way:
+            ionization, scattering, energy loss, particle showers and so on. The result is a record of where and how
+            much energy was deposited in each part of the detector. Here the geometry is custom, including
+            components such as <strong>argon chambers with lead walls</strong>.
+          </p>
+          <p>
+            <strong>Part of the collision it handles.</strong> None of the collision itself. GEANT4 handles the
+            <strong>detector response</strong>: what a real instrument would actually see of the particles that Pythia
+            produced.
+          </p>
+        </div>
+        <figure class="shot" style="max-width: 960px; margin-top: 24px">
+          <img src="/hep/figures/hardware.png" width="1478" height="842" alt="Photographs of detector hardware in a physics lab: black curved frames on lab benches, an orange cylindrical component, a foil-wrapped assembly on a bench, and a close-up of a cylinder with a black end ring" loading="lazy" />
+          <figcaption>Components of a physical detector, photographed in the lab.</figcaption>
+        </figure>
+
+        <h3 class="sub">5. EiC Simulator <span class="aside">the analysis</span></h3>
+        <div class="prose">
+          <p>
+            <strong>What it is.</strong> The simulation and analysis software for the Electron-Ion Collider (EIC), a
+            next-generation collider facility. The software is written in C++, typically on top of the ROOT
+            framework. On the project poster the software environment is called EIC-shell.
+          </p>
+          <p>
+            <strong>What it does.</strong> It takes the simulated detector-level data and runs the analysis:
+            reconstructing what happened in each event, applying detector effects and computing the physical
+            quantities and distributions of interest.
+          </p>
+          <p>
+            <strong>Why it's used here.</strong> Analysis means processing very large numbers of events. Because the
+            software is compiled C++ rather than an interpreted language, it is much faster for this kind of heavy
+            number crunching.
+          </p>
+          <p>
+            <strong>Part of the collision it handles.</strong> None directly. It works on the end products of the
+            whole chain and turns raw simulated data into results.
+          </p>
+        </div>
+      </section>
+
+      <section id="used" class="block" aria-labelledby="used-title">
+        <h2 id="used-title">How the pipeline was used</h2>
+        <p class="section-lede">The tools were chained in order, with the output of each becoming the input of the next.</p>
+        <ol class="steps">
+          <li><strong>Mathematica</strong> produced a custom Lagrangian model that included dark matter equations and the new dark particles. The model was exported in a format MadGraph can read.</li>
+          <li><strong>MadGraph</strong> loaded that custom model and simulated the hard scatter, producing events containing the new dark particles.</li>
+          <li><strong>Pythia</strong> took MadGraph's output events and simulated the later stages: showering, hadronization and decays.</li>
+          <li><strong>GEANT4</strong> received the resulting final-state particles and passed them through a custom-built detector geometry, including components such as argon chambers with lead walls.</li>
+          <li><strong>EiC Simulator</strong> took the results from the preceding stages and ran the analysis, benefiting from its optimized C++ performance.</li>
+        </ol>
+      </section>
+
+      <section id="role" class="block" aria-labelledby="role-title">
+        <h2 id="role-title">My role</h2>
+        <p class="section-lede">
+          The physics model was specified by a PhD student collaborator. My contribution was the software and
+          integration side of the project.
+        </p>
+        <ul class="ghost-grid">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Defined the dark particles</h3>
+            <p>Put the custom dark particles and their properties into the model, as specified by the PhD student.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Built the model in Mathematica</h3>
+            <p>Made sure it exported in a form MadGraph could successfully load and interpret.</p>
+          </li>
+          <li class="ghost" style="--c: var(--fg)">
+            <h3>Connected the pipeline</h3>
+            <p>Made sure each tool's output was correctly formatted and passed on as the next one's input: Mathematica to MadGraph, MadGraph to Pythia, Pythia to GEANT4, and onward to the EiC Simulator.</p>
+          </li>
+          <li class="ghost" style="--c: var(--muted-fg)">
+            <h3>Worked on the GEANT4 geometry</h3>
+            <p>Worked with the detector geometry, including custom components such as argon chambers with lead walls.</p>
+          </li>
+        </ul>
+        <div class="prose" style="margin-top: 24px">
+          <p>
+            The result is a <strong>reusable workflow</strong>: change the theory in Mathematica, and the effect can
+            be followed through to detector-level results without redoing the plumbing by hand.
+          </p>
+        </div>
+      </section>
+
+      <section id="poster" class="block" aria-labelledby="poster-title">
+        <h2 id="poster-title">The project poster</h2>
+        <p class="section-lede">
+          The project was presented as a poster at a student design showcase. It frames the pipeline as a single
+          software tool, with a GUI on top, for studying dark matter collisions.
+        </p>
+        <div class="split poster">
+          <figure class="shot">
+            <a href="/hep/figures/poster.png" target="_blank" rel="noopener noreferrer">
+              <img src="/hep/figures/poster.png" width="878" height="773" alt="Project poster titled EIC Detection Simulator, Dark Matter Lagrange Model, with sections for objective, motivation, pipeline architecture, features, GUI, future work and acknowledgements" loading="lazy" />
+            </a>
+            <figcaption>The poster. Click it to open the full-size image.</figcaption>
+          </figure>
+          <div>
+            <h3 class="sub" style="margin-top: 0">Objective</h3>
+            <div class="prose">
+              <p>
+                Create a single software tool that lets users study high-energy dark matter particle collisions
+                through detectors, using a dark matter Lagrangian model.
+              </p>
+            </div>
+            <h3 class="sub">Features</h3>
+            <ul class="bullets tight" style="margin-top: 0">
+              <li>A single environment that pipes the physics software together: Mathematica, MadGraph, Pythia and EIC-shell.</li>
+              <li>A custom-made dark matter Lagrangian model.</li>
+              <li>Dark matter Feynman diagrams.</li>
+              <li>A script template for users to define their own models.</li>
+              <li>Dark particles and interactions.</li>
+              <li>A GUI for generating and studying collisions with button clicks, which lowers the technical literacy needed to study collisions on existing models.</li>
+            </ul>
+            <p class="note">
+              The poster's pipeline diagram also lists the outputs the tool produces: the collision sub-processes,
+              the Feynman diagrams and the collision information.
+            </p>
+          </div>
+        </div>
+        <div class="callout" style="margin-top: 24px">
+          <p>
+            <strong>Checking the model.</strong> According to the poster, a post-doc working in high-energy physics
+            took an interest in the project and recreated the same particle collisions independently, to help verify
+            that the model was working correctly.
+          </p>
+        </div>
+      </section>
+
+      <section id="references" class="block" aria-labelledby="references-title">
+        <h2 id="references-title">The software and its papers</h2>
+        <ol class="refs">
+          <li>
+            Alloul et al. <cite>FeynRules 2.0: A complete toolbox for tree-level phenomenology.</cite> Comput. Phys. Commun. 185, 2014. (Mathematica)
+            <span class="ref-links"><a href="https://arxiv.org/abs/1310.1921" target="_blank" rel="noopener noreferrer">arXiv</a><a href="https://feynrules.phys.ucl.ac.be/" target="_blank" rel="noopener noreferrer">FeynRules</a></span>
+          </li>
+          <li>
+            Degrande et al. <cite>UFO: The Universal FeynRules Output.</cite> Comput. Phys. Commun. 183, 2012. (The model format)
+            <span class="ref-links"><a href="https://arxiv.org/abs/1108.2040" target="_blank" rel="noopener noreferrer">arXiv</a></span>
+          </li>
+          <li>
+            Alwall et al. <cite>The automated computation of tree-level and next-to-leading order differential cross sections, and their matching to parton shower simulations.</cite> JHEP 07, 2014. (MadGraph5_aMC@NLO)
+            <span class="ref-links"><a href="https://arxiv.org/abs/1405.0301" target="_blank" rel="noopener noreferrer">arXiv</a></span>
+          </li>
+          <li>
+            Sj&ouml;strand et al. <cite>An introduction to PYTHIA 8.2.</cite> Comput. Phys. Commun. 191, 2015.
+            <span class="ref-links"><a href="https://arxiv.org/abs/1410.3012" target="_blank" rel="noopener noreferrer">arXiv</a><a href="https://pythia.org/" target="_blank" rel="noopener noreferrer">Pythia</a></span>
+          </li>
+          <li>
+            Agostinelli et al. <cite>Geant4: a simulation toolkit.</cite> Nucl. Instrum. Meth. A 506, 2003.
+            <span class="ref-links"><a href="https://geant4.web.cern.ch/" target="_blank" rel="noopener noreferrer">Geant4</a></span>
+          </li>
+          <li>
+            Electron-Ion Collider and the ROOT analysis framework.
+            <span class="ref-links"><a href="https://www.bnl.gov/eic/" target="_blank" rel="noopener noreferrer">EIC</a><a href="https://root.cern/" target="_blank" rel="noopener noreferrer">ROOT</a></span>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/#work">&larr; Back to all projects</a>
+    </footer>
+
+  </body>
+</html>

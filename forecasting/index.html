@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <meta
+      name="description"
+      content="Forecasting Algorithms (work in progress): a re-implementation of the ES-RNN hybrid that won the M4 competition, with plans to compare its variants against XGBoost and LightGBM."
+    />
+    <title>Forecasting Algorithms</title>
+    <!-- Temporary: the full forecast plot as a faint page background. Delete this block to revert. -->
+    <style>body:before{content:"";z-index:-1;opacity:.22;pointer-events:none;background:url(/forecasting/figures/forecast_grid.png) 50%/cover no-repeat;position:fixed;inset:0}@media (prefers-color-scheme:dark){:root:not([data-theme=light]) body:before{filter:invert()hue-rotate(180deg);opacity:.2}}</style>
+    <script type="module" crossorigin src="/assets/forecasting-BHcTkLTX.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/projects-D6KBgP7A.js">
+    <link rel="modulepreload" crossorigin href="/assets/project-page-YFq_ndGV.js">
+    <link rel="stylesheet" crossorigin href="/assets/projects-BDO5pT66.css">
+  </head>
+  <body>
+    <a class="skip" href="#overview">Skip to content</a>
+
+    <header class="site-header">
+      <a class="brand" href="/" data-profile-name>Home</a>
+      <nav aria-label="Primary">
+        <a href="/#work">All projects</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="project-hero" aria-labelledby="page-title">
+        <a class="back" href="/#work">
+          <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" focusable="false"><path d="M12 8H4M7.5 4.5L4 8l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.5" /></svg>
+          All projects
+        </a>
+        <p class="eyebrow">Project &middot; Time-series forecasting &middot; Deep learning &middot; PyTorch</p>
+        <p class="wip-badge"><span class="dot" aria-hidden="true"></span>WIP &middot; currently being worked on</p>
+        <h1 id="page-title">Forecasting Algorithms</h1>
+        <p class="lede">
+          A re-implementation of <strong>ES-RNN</strong>, the hybrid of exponential smoothing and recurrent neural
+          networks that won the <strong>M4 forecasting competition</strong>. A plain-LSTM baseline for the Monthly
+          series already runs end to end and beats three of the competition's reference methods. Next come the paper's
+          RNN variants, then a head-to-head comparison with <strong>XGBoost</strong> and <strong>LightGBM</strong>.
+        </p>
+        <div class="actions">
+          <a class="button" href="#roadmap">The roadmap</a>
+          <a class="button secondary" href="#results">Baseline results</a>
+          <a class="button secondary" href="#references">Papers and code</a>
+        </div>
+        <dl class="facts">
+          <div><dt>Status</dt><dd>Work in progress</dd></div>
+          <div><dt>Method</dt><dd>ES-RNN (Smyl, 2020)</dd></div>
+          <div><dt>Benchmark</dt><dd>M4, 100,000 series</dd></div>
+          <div><dt>Baseline</dt><dd>Plain LSTM, Monthly</dd></div>
+          <div><dt>Training</dt><dd>Moving to SageMaker AI</dd></div>
+          <div><dt>Next</dt><dd>Variants, XGBoost, LightGBM</dd></div>
+        </dl>
+      </section>
+
+      <nav class="toc" aria-label="On this page">
+        <a href="#overview">Overview</a>
+        <a href="#roadmap">Roadmap</a>
+        <a href="#sagemaker">SageMaker</a>
+        <a href="#method">How ES-RNN works</a>
+        <a href="#variants">Paper variants</a>
+        <a href="#results">Baseline results</a>
+        <a href="#plots">Plots</a>
+        <a href="#design">Baseline design</a>
+        <a href="#differences">Vs. the paper</a>
+        <a href="#references">References</a>
+      </nav>
+
+      <section id="overview" class="block" aria-labelledby="overview-title">
+        <div class="callout" style="margin-top: 0; margin-bottom: 32px">
+          <p>
+            <strong>Work in progress.</strong> This project is still being built. What exists today is a
+            <strong>baseline</strong>: a simplified ES-RNN for M4 Monthly with a plain LSTM in place of the paper's
+            specialised network. Everything described under
+            <a href="#roadmap">the roadmap</a> after that, the other RNN variants, the gradient-boosted trees and the
+            cross-dataset comparison, has not been built yet. Training the larger models has also outgrown a local
+            machine, so the work is <a href="#sagemaker">moving to AWS SageMaker AI</a>.
+          </p>
+        </div>
+
+        <h2 id="overview-title">What it is</h2>
+        <div class="prose">
+          <p>
+            <strong>ES-RNN</strong> (Smyl, 2020) is the method that won the M4 competition, a forecasting contest of
+            100,000 time series and 61 methods. It couples classical <strong>exponential smoothing</strong>, which
+            handles each series' level and seasonality, with a <strong>recurrent neural network</strong> that learns
+            the patterns shared across all series. The two are trained together, so the model is partly global and
+            partly specific to each series.
+          </p>
+          <p>
+            This project re-implements it from the paper and the reference C++ code. The first step was a baseline
+            covering only <strong>M4 Monthly</strong> (48,000 series, forecast horizon 18), with the paper's
+            specialised network swapped for a plain one-layer LSTM. The goal of that baseline was to get the whole
+            pipeline working end to end first: the smoothing layer, the network, the loss and the evaluation. Once that
+            works, each variant from the paper can replace the LSTM in turn.
+          </p>
+        </div>
+      </section>
+
+      <section id="roadmap" class="block" aria-labelledby="roadmap-title">
+        <h2 id="roadmap-title">Roadmap and planned comparisons</h2>
+        <p class="section-lede">
+          The baseline is the common core. The plan is to build outward from it in three steps. Steps 2 and 3 are the
+          comparisons: the ES-RNN variants against each other, and all of them against gradient-boosted decision trees.
+        </p>
+
+        <ol class="steps">
+          <li>
+            <strong>Baseline: plain-LSTM ES-RNN on M4 Monthly.</strong> <span class="chip-status done">Done</span>
+            The full pipeline trains and evaluates, and is scored against the official M4 results.
+          </li>
+          <li>
+            <strong>Explore every RNN variant in the paper.</strong> <span class="chip-status active">Next</span>
+            Each M4 frequency in the paper is the common core plus a different network and a different smoothing setup.
+            Each variant will be implemented and tested in turn, and compared with the others. Training these is
+            where runs have started to take hours to days, which is why training is moving to
+            <a href="#sagemaker">SageMaker AI</a>. A dilated,
+            sequence-style model has been started in the repository's root.
+          </li>
+          <li>
+            <strong>Compare against gradient-boosted decision trees.</strong> <span class="chip-status planned">Planned</span>
+            The same forecasting task will be run with <strong>XGBoost</strong> and <strong>LightGBM</strong> as
+            non-neural, global-model baselines, alongside the RNN variants.
+          </li>
+          <li>
+            <strong>Compare all three families on other datasets.</strong> <span class="chip-status planned">Planned</span>
+            ES-RNN variants, XGBoost and LightGBM will be compared on datasets beyond M4. This happens only once every
+            RNN variant from the paper is fully implemented and tested.
+          </li>
+        </ol>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Planned comparison matrix" style="margin-top: 24px">
+          <table class="data-table results">
+            <thead>
+              <tr><th scope="col">Model family</th><th scope="col">What is being compared</th><th scope="col">Status</th></tr>
+            </thead>
+            <tbody>
+              <tr><th scope="row">ES-RNN, plain LSTM</th><td>The Monthly baseline, scored against the M4 results.</td><td><span class="chip-status done">Done</span></td></tr>
+              <tr><th scope="row">ES-RNN variants</th><td>Residual dilated (Monthly), dilated with shortcut (Quarterly), attentive (Yearly, Weekly), multi-block dilated (Daily, Hourly), each against the others and the baseline.</td><td><span class="chip-status active">Next</span></td></tr>
+              <tr><th scope="row">XGBoost</th><td>A non-neural global model on the same forecasting task, against the RNN variants.</td><td><span class="chip-status planned">Planned</span></td></tr>
+              <tr><th scope="row">LightGBM</th><td>A second gradient-boosted tree model on the same task, against the RNN variants and XGBoost.</td><td><span class="chip-status planned">Planned</span></td></tr>
+              <tr><th scope="row">All three families</th><td>The variants, XGBoost and LightGBM together on datasets other than M4.</td><td><span class="chip-status planned">Planned</span></td></tr>
+              <tr><th scope="row">A hosted model</th><td>One model hosted on SageMaker AI for a short time, for fun, with latency diagnostics.</td><td><span class="chip-status planned">Planned</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          None of the rows below the baseline exists yet. The baseline already reports sMAPE, MASE and OWA against the
+          official M4 numbers, which are the natural yardsticks for the later comparisons.
+        </p>
+      </section>
+
+      <section id="sagemaker" class="block" aria-labelledby="sagemaker-title">
+        <h2 id="sagemaker-title">Moving training to AWS SageMaker AI</h2>
+        <div class="prose">
+          <p>
+            The Monthly baseline trains in a reasonable time on a local machine. The other models are a different
+            story. As the paper's larger variants come online, training is starting to take <strong>several hours to
+            days</strong> per run, which is too slow to iterate on locally. So I have switched training over to
+            <strong>AWS SageMaker AI</strong>.
+          </p>
+        </div>
+
+        <ul class="ghost-grid" style="margin-top: 24px">
+          <li class="ghost" style="--c: var(--accent)">
+            <h3>Why</h3>
+            <p>Runs of several hours to days tie up a local machine and make it hard to try variants one after another. Moving them to SageMaker AI takes them off my own hardware.</p>
+          </li>
+          <li class="ghost" style="--c: var(--series-b)">
+            <h3>Where I work</h3>
+            <p>I use SageMaker Studio as the working environment for the training side of the project.</p>
+          </li>
+          <li class="ghost" style="--c: var(--fg)">
+            <h3>Where the data lives</h3>
+            <p>I connect SageMaker Studio to <strong>S3 buckets</strong> and pull the data from them, instead of keeping the datasets on a local disk.</p>
+          </li>
+          <li class="ghost" style="--c: var(--muted-fg)">
+            <h3>What it helps with</h3>
+            <p>It also fits the later steps: running XGBoost and LightGBM on the same data, and testing on datasets beyond M4.</p>
+          </li>
+        </ul>
+
+        <h3 class="sub">How the training jobs run</h3>
+        <div class="prose">
+          <p>
+            Training runs as <strong>SageMaker training jobs</strong>, launched with an <code>Estimator</code> from the
+            <strong>SageMaker Python SDK</strong>. For now the jobs run on an <code>ml.m5.xlarge</code> instance, which
+            is a general-purpose CPU instance with no GPU.
+          </p>
+          <p>
+            That is a stopgap. I am <strong>waiting on a service-quota increase</strong> for a better GPU instance, since
+            the default limit doesn't allow one. Until it is approved the jobs run on CPU, which is part of why they are
+            slow, and moving to a GPU is the next step for training time.
+          </p>
+        </div>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Current SageMaker training setup" style="margin-top: 16px">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row">Launched with</th><td><code>Estimator</code> from the SageMaker Python SDK, as a training job</td></tr>
+              <tr><th scope="row">Instance now</th><td><code>ml.m5.xlarge</code> (CPU)</td></tr>
+              <tr><th scope="row">Instance next</th><td>A GPU instance, once the resource limit increase comes through</td></tr>
+              <tr><th scope="row">Data</th><td>Pulled from S3 buckets, through SageMaker Studio</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">Planned: host a model for latency diagnostics</h3>
+        <div class="prose">
+          <p>
+            Later on, I plan to <strong>host one of the models on SageMaker AI</strong> for a short time, mainly for
+            fun. Serving a forecasting model is a different problem from training it, and a hosted endpoint is a good
+            place to look at it. The point of the exercise is <strong>latency diagnostics</strong>: how long a request
+            takes to get a forecast back, and where that time goes.
+          </p>
+        </div>
+        <div class="callout warn">
+          <p>
+            <strong>Not done yet.</strong> The move to SageMaker AI is in progress, the GPU limit increase is still pending, and the hosted model and the latency
+            measurements are still plans. This page will say so until there is something to show, and it won't report
+            numbers it doesn't have.
+          </p>
+        </div>
+      </section>
+
+      <section id="method" class="block" aria-labelledby="method-title">
+        <h2 id="method-title">How ES-RNN works</h2>
+        <p class="section-lede">
+          Each forecast goes through a differentiable exponential-smoothing step, a neural network and then back out of
+          the smoothing step. Everything, including the per-series smoothing parameters, is trained jointly with one
+          optimizer.
+        </p>
+
+        <figure class="diagram">
+          <div class="diagram-scroll" tabindex="0" role="region" aria-label="ES-RNN forecast flow diagram (scrollable)">
+            <svg viewBox="0 0 860 250" width="860" height="250" role="img" aria-labelledby="flow-title flow-desc">
+              <title id="flow-title">The baseline's forecast flow</title>
+              <desc id="flow-desc">
+                A raw 12-point window goes through the exponential-smoothing recursion, which gives per-series level
+                and seasonality. The window is normalized by dividing by level and seasonality and taking the log. A
+                one-layer LSTM reads the normalized window, a linear adapter maps its state to 18 outputs, and the
+                outputs are denormalized with the level and seasonality to give the forecast.
+              </desc>
+              <defs>
+                <marker id="flow-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+                  <path d="M0 0L10 5L0 10z" class="dg-head" />
+                </marker>
+              </defs>
+              <g class="dg-box"><rect x="20" y="30" width="240" height="70" /><text x="140" y="60" text-anchor="middle">1. Raw window</text><text class="dg-sub" x="140" y="80" text-anchor="middle">12 values of one series</text></g>
+              <g class="dg-box dg-main"><rect x="310" y="30" width="240" height="70" /><text x="430" y="60" text-anchor="middle">2. ES recursion</text><text class="dg-sub" x="430" y="80" text-anchor="middle">per-series level and seasonality</text></g>
+              <g class="dg-box"><rect x="600" y="30" width="240" height="70" /><text x="720" y="60" text-anchor="middle">3. Normalize</text><text class="dg-sub" x="720" y="80" text-anchor="middle">log(value / level / seasonality)</text></g>
+              <g class="dg-box dg-main"><rect x="20" y="150" width="240" height="70" /><text x="140" y="180" text-anchor="middle">4. LSTM</text><text class="dg-sub" x="140" y="200" text-anchor="middle">1 layer, 50 units, 12-step input</text></g>
+              <g class="dg-box"><rect x="310" y="150" width="240" height="70" /><text x="430" y="180" text-anchor="middle">5. Linear adapter</text><text class="dg-sub" x="430" y="200" text-anchor="middle">50 &rarr; 18 forecast steps</text></g>
+              <g class="dg-box"><rect x="600" y="150" width="240" height="70" /><text x="720" y="180" text-anchor="middle">6. Denormalize</text><text class="dg-sub" x="720" y="200" text-anchor="middle">exp(out) &times; level &times; seasonality</text></g>
+              <path class="dg-line" d="M260 65H310" marker-end="url(#flow-arrow)" />
+              <path class="dg-line" d="M550 65H600" marker-end="url(#flow-arrow)" />
+              <path class="dg-line" d="M720 100V125H140V150" marker-end="url(#flow-arrow)" />
+              <path class="dg-line" d="M260 185H310" marker-end="url(#flow-arrow)" />
+              <path class="dg-line" d="M550 185H600" marker-end="url(#flow-arrow)" />
+            </svg>
+          </div>
+          <figcaption>
+            The baseline's forecast flow. The highlighted steps are the two learned parts: the per-series smoothing
+            (step 2) and the shared network (step 4). The paper's variants change step 4.
+          </figcaption>
+        </figure>
+
+        <h3 class="sub">The smoothing layer</h3>
+        <p class="section-lede">
+          Holt&ndash;Winters-style smoothing without a trend (paper eq. 2), with a season length of 12 for Monthly data.
+        </p>
+        <pre class="codeblock" tabindex="0"><code>l_t     = alpha * y_t / s_t + (1 - alpha) * l_{t-1}
+s_{t+K} = beta  * y_t / l_t + (1 - beta)  * s_t</code></pre>
+        <ul class="bullets">
+          <li><strong>Per-series parameters.</strong> Each series has its own <code>alpha</code>, <code>beta</code> and 12 initial seasonality values, stored as learnable parameters. They are constrained as in the paper: <code>alpha = sigmoid(alpha_raw)</code>, <code>beta = sigmoid(beta_raw)</code>, and seasonality <code>= exp(init_seasonality_raw)</code>. All raw values start at zero, so <code>alpha</code> and <code>beta</code> start at 0.5 and seasonality at 1.0.</li>
+          <li><strong>The recursion</strong> runs over the whole series from its first point, and the initial level is seeded with the series' own first value (the paper doesn't say how to seed it).</li>
+          <li><strong>Recomputed on every call</strong> from the current parameters, so there is no staleness between optimizer steps.</li>
+        </ul>
+
+        <h3 class="sub">The loss</h3>
+        <ul class="bullets">
+          <li><strong>Pinball loss</strong> (paper eq. 7) with <code>tau = 0.49</code> for Monthly. A value slightly below 0.5 counteracts the positive bias that comes from training in log space but evaluating in linear space.</li>
+          <li><strong>Level wiggliness penalty.</strong> The squared second differences of <code>log(l_{t+1} / l_t)</code>, averaged, which discourages the smoothed level from jumping around.</li>
+          <li><code>total = pinball + 50 * wiggliness</code>, with the weight (LVP) 50 for Monthly.</li>
+        </ul>
+      </section>
+
+      <section id="variants" class="block" aria-labelledby="variants-title">
+        <h2 id="variants-title">The paper's variants, by frequency</h2>
+        <p class="section-lede">
+          Every frequency shares the same core: per-series level and seasonality, log-normalisation, a global network
+          trained jointly with the smoothing parameters, a linear adapter to the horizon, pinball loss and the level
+          penalty. What changes is the RNN connections and the smoothing setup. These are the variants to be implemented.
+        </p>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="ES-RNN variants by frequency table">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th scope="col">Frequency</th><th scope="col">RNN connections</th><th scope="col">Seasonality</th><th scope="col">LVP</th>
+                <th scope="col">Max length</th><th scope="col">Training percentile</th><th scope="col">LSTM state</th><th scope="col">Ensembling</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="us"><th scope="row">Monthly</th><td>Residual dilated LSTM, one block, dilations 1-3-6-12 (Kim et al. residual cells)</td><td>season length 12</td><td>50</td><td>272</td><td>49</td><td>50</td><td>Simple ensemble</td></tr>
+              <tr><th scope="row">Quarterly</th><td>Two blocks of two dilated LSTMs, (1,2)-(4,8), shortcut around the second block</td><td>season length 4</td><td>80</td><td>174</td><td>45</td><td>40</td><td>Simple ensemble</td></tr>
+              <tr><th scope="row">Yearly</th><td>Dilated LSTM with attention, Attentive (1,6)</td><td>non-seasonal</td><td>0</td><td>72</td><td>50</td><td>30</td><td>Ensemble of Specialists 4/5</td></tr>
+              <tr><th scope="row">Daily</th><td>Two blocks of two dilated LSTMs, (1,3)-(7,14)</td><td>season length 7</td><td>100</td><td>112</td><td>49</td><td>40</td><td>Ensemble of Specialists 4/5</td></tr>
+              <tr><th scope="row">Weekly</th><td>Attentive (1,52): a standard LSTM layer, then a dilated layer with attention over the past 52 hidden states</td><td>season length 52</td><td>100</td><td>335</td><td>47</td><td>40</td><td>Ensemble of Specialists 3/5</td></tr>
+              <tr><th scope="row">Hourly</th><td>Two blocks of two dilated LSTMs, (1,4)-(24,168)</td><td>two seasonalities, 24 and 168</td><td>10</td><td>none</td><td>49</td><td>40</td><td>Ensemble of Specialists 4/5</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          Values are from Table 1 of the paper (point-forecast models). The Yearly model is non-seasonal, so its LVP
+          (which only applies to seasonal models) is 0. Season lengths for Monthly, Quarterly and Yearly follow the
+          paper's convention of one season per year. Learning rates, epochs and learning-rate drops also differ per
+          frequency: for example Monthly runs 10 epochs at 5e-4, Quarterly 15 epochs at 1e-3 dropping to 1e-4 at epoch
+          10, and Yearly 12 epochs at 1e-4. The paper also trains separate prediction-interval models, which this
+          project doesn't cover.
+        </p>
+        <div class="prose" style="margin-top: 16px">
+          <p>
+            The baseline corresponds to the <strong>Monthly</strong> row with the network replaced by a plain,
+            non-dilated LSTM. The paper itself notes that standard non-dilated LSTM blocks "performed a bit worse" than
+            dilated ones, which is the gap the dilated, residual and attentive variants are meant to close.
+          </p>
+        </div>
+      </section>
+
+      <section id="results" class="block" aria-labelledby="results-title">
+        <h2 id="results-title">Baseline results on M4 Monthly</h2>
+        <p class="section-lede">
+          A 10-epoch run over all 48,000 Monthly series, scored with the M4 metrics against the official results.
+          Lower is better on all three.
+        </p>
+
+        <div class="table-scroll" tabindex="0" role="region" aria-label="M4 Monthly results table">
+          <table class="data-table results">
+            <thead><tr><th scope="col">Method</th><th scope="col">sMAPE</th><th scope="col">MASE</th><th scope="col">OWA</th></tr></thead>
+            <tbody>
+              <tr><th scope="row">ES-RNN (Smyl, ID 118)</th><td><b class="best">12.126</b></td><td><b class="best">0.884</b></td><td><b class="best">0.836</b></td></tr>
+              <tr class="us"><th scope="row">This baseline (plain LSTM)</th><td>12.954</td><td>0.936</td><td>0.889</td></tr>
+              <tr><th scope="row">Theta</th><td>13.002</td><td>0.970</td><td>0.907</td></tr>
+              <tr><th scope="row">Comb</th><td>13.434</td><td>0.966</td><td>0.920</td></tr>
+              <tr><th scope="row">Naive2</th><td>14.427</td><td>1.063</td><td>1.000</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="note">
+          Bold marks the best value in each column. The reference rows are the Monthly columns of the official M4
+          results (point forecasts), and the winning ES-RNN is submission 118. OWA is the mean of sMAPE and MASE, each
+          relative to Naive2's Monthly values.
+        </p>
+
+        <div class="charts" style="margin-top: 24px">
+          <figure class="hbars"><figcaption><strong>sMAPE</strong> M4 Monthly, lower is better</figcaption>
+          <div class="hrow"><span class="name">ES-RNN (ID 118)</span><span class="track"><i style="--v: 84.0%"></i></span><b>12.126</b></div>
+          <div class="hrow ei"><span class="name">This baseline</span><span class="track"><i style="--v: 89.8%"></i></span><b>12.954</b></div>
+          <div class="hrow"><span class="name">Theta</span><span class="track"><i style="--v: 90.1%"></i></span><b>13.002</b></div>
+          <div class="hrow"><span class="name">Comb</span><span class="track"><i style="--v: 93.1%"></i></span><b>13.434</b></div>
+          <div class="hrow"><span class="name">Naive2</span><span class="track"><i style="--v: 100%"></i></span><b>14.427</b></div>
+          </figure>
+          <figure class="hbars"><figcaption><strong>OWA</strong> M4 Monthly, lower is better</figcaption>
+          <div class="hrow"><span class="name">ES-RNN (ID 118)</span><span class="track"><i style="--v: 83.6%"></i></span><b>0.836</b></div>
+          <div class="hrow ei"><span class="name">This baseline</span><span class="track"><i style="--v: 88.9%"></i></span><b>0.889</b></div>
+          <div class="hrow"><span class="name">Theta</span><span class="track"><i style="--v: 90.7%"></i></span><b>0.907</b></div>
+          <div class="hrow"><span class="name">Comb</span><span class="track"><i style="--v: 92.0%"></i></span><b>0.920</b></div>
+          <div class="hrow"><span class="name">Naive2</span><span class="track"><i style="--v: 100%"></i></span><b>1.000</b></div>
+          </figure>
+        </div>
+
+        <h3 class="sub">Reading the numbers</h3>
+        <ul class="bullets">
+          <li><strong>Gap to the winner:</strong> sMAPE +0.828, MASE +0.052, OWA +0.053.</li>
+          <li><strong>Against the references:</strong> the baseline beats Theta, Comb and Naive2 on all three metrics. Its sMAPE edge over Theta is only 0.05, so that one is close to a tie, while the MASE and OWA margins are clearer.</li>
+          <li><strong>A few hard series drive the average.</strong> Per-series sMAPE has a best of 0.10, a median of 7.26 and a worst of 155.31. The median sits well below the 12.95 mean, so a minority of hard series pull it up.</li>
+          <li><strong>What closes the rest of the gap:</strong> the paper's residual dilated stack, full-series RNN state and ensembling. The baseline is a single plain-LSTM model with no ensemble.</li>
+        </ul>
+        <div class="callout warn">
+          <p>
+            <strong>Caveats.</strong> MASE is computed with a seasonal-naive scale (season 12) over each full training
+            series, and hasn't been checked against the official M4 R code. The overall M4 figures in the competition
+            paper (for example ES-RNN's 11.374 sMAPE) average all six frequencies, so they are not comparable with a
+            Monthly-only run.
+          </p>
+        </div>
+      </section>
+
+      <section id="plots" class="block" aria-labelledby="plots-title">
+        <h2 id="plots-title">Training and forecasts</h2>
+
+        <h3 class="sub">Training loss</h3>
+        <figure class="chart" style="margin-top: 0">
+          <div class="paper">
+            <img src="/forecasting/figures/loss_curve.png" width="1500" height="400" alt="Three line charts over 10 epochs: total loss falling from about 0.42 to about 0.12, pinball loss falling from about 0.0516 to about 0.0470, and level-wiggliness penalty falling from about 0.0075 to about 0.0015." loading="lazy" />
+          </div>
+          <figcaption>
+            Loss over the 10-epoch run: total (left), pinball (middle) and level-wiggliness penalty (right). All three
+            fall steadily, with the largest drops in the first few epochs. The total loss goes from about 0.42 to about
+            0.12.
+          </figcaption>
+        </figure>
+
+        <h3 class="sub">Example forecasts</h3>
+        <p class="section-lede">
+          Six series from the forecast plot, picked to show the range: the 18 held-out points (blue), the
+          forecast (orange), and the plot's shaded 95% interval band. Each panel is titled with the series id and its
+          sMAPE.
+        </p>
+        <div class="fcgrid">
+          <figure class="chart"><div class="paper"><img src="/forecasting/figures/fc_M39374.png" width="504" height="384" alt="Series M39374: a smooth slowly rising series whose forecast tracks the actual values closely, sMAPE 0.3 percent." loading="lazy" /></div><figcaption><strong>Smooth series.</strong> M39374, sMAPE 0.3%. A gently rising series is tracked almost exactly.</figcaption></figure>
+          <figure class="chart"><div class="paper"><img src="/forecasting/figures/fc_M35255.png" width="504" height="384" alt="Series M35255: a seasonal series with sharp yearly peaks where the forecast reproduces the shape of the next year including the peak, sMAPE 2.8 percent." loading="lazy" /></div><figcaption><strong>Seasonal series.</strong> M35255, sMAPE 2.8%. The forecast reproduces the yearly shape, including the sharp peak.</figcaption></figure>
+          <figure class="chart"><div class="paper"><img src="/forecasting/figures/fc_M20967.png" width="504" height="384" alt="Series M20967: an oscillating series where the forecast has the right overall wave shape but is offset from the actual values, sMAPE 20.2 percent." loading="lazy" /></div><figcaption><strong>Middling.</strong> M20967, sMAPE 20.2%. The overall wave is right but the level is off.</figcaption></figure>
+          <figure class="chart"><div class="paper"><img src="/forecasting/figures/fc_M2879.png" width="504" height="384" alt="Series M2879: a flat series that jumps up in the forecast window, where the forecast stays flat and misses the jump, sMAPE 13.6 percent." loading="lazy" /></div><figcaption><strong>A missed jump.</strong> M2879, sMAPE 13.6%. The series jumps upward and the forecast stays flat.</figcaption></figure>
+          <figure class="chart"><div class="paper"><img src="/forecasting/figures/fc_M44766.png" width="504" height="384" alt="Series M44766: a series that rose before the forecast window, where the forecast keeps rising but the actual values fall, sMAPE 46.9 percent." loading="lazy" /></div><figcaption><strong>Wrong direction.</strong> M44766, sMAPE 46.9%. The forecast keeps rising while the series falls.</figcaption></figure>
+          <figure class="chart"><div class="paper"><img src="/forecasting/figures/fc_M47047.png" width="504" height="384" alt="Series M47047: a very noisy series with a large spike late in the forecast window that the forecast doesn't capture, sMAPE 51.2 percent." loading="lazy" /></div><figcaption><strong>Noisy series.</strong> M47047, sMAPE 51.2%. A very noisy history, and a late spike that the forecast doesn't capture.</figcaption></figure>
+        </div>
+        <p class="note">
+          The full plot has all 48 series in one image.
+          <a href="/forecasting/figures/forecast_grid.png" target="_blank" rel="noopener noreferrer">Open the full 48-series grid</a>
+          (a large image, 6048 by 1536 pixels).
+        </p>
+      </section>
+
+      <section id="design" class="block" aria-labelledby="design-title">
+        <h2 id="design-title">Baseline design</h2>
+        <p class="section-lede">Notes on the baseline code, written from reading it.</p>
+
+        <h3 class="sub">Data</h3>
+        <ul class="bullets">
+          <li><strong>M4 Monthly:</strong> 48,000 series with an 18-point test set each. Training lengths run from 42 to 2,794 points, with a mean of about 216.3.</li>
+          <li><strong>Domain one-hot.</strong> Each series' category (Demographic, Finance, Industry, Macro, Micro, Other) is one-hot encoded in a fixed sorted order and appended to the network input.</li>
+          <li><strong>Loading</strong> checks that train and test ids match and that every test row has exactly 18 points, and builds the arrays with a single numpy conversion (a per-row pandas version was too slow for 48,000 rows).</li>
+        </ul>
+
+        <h3 class="sub">Windowing</h3>
+        <ul class="bullets">
+          <li>Series longer than 272 points are cut to their <strong>most recent</strong> 272 (paper section 3.3).</li>
+          <li>A window uses 12 points as input and the next 18 as the target, starting at every position, so series shorter than 30 points yield no windows.</li>
+          <li>That gives <strong>7,519,476 windows</strong> across the 48,000 series, or <strong>918 batches</strong> per epoch at a batch size of 8,192.</li>
+          <li>The dataset returns raw values only. Normalization happens inside the model, because the smoothing parameters have to take part in backpropagation.</li>
+          <li>The input window is 12 because the paper only says it should cover at least one seasonal period and was tuned by backtesting. 12 matches the reference C++ Monthly block.</li>
+        </ul>
+
+        <h3 class="sub">The model</h3>
+        <ul class="bullets">
+          <li><strong>Network:</strong> a one-layer <code>nn.LSTM</code> with input size 7 (the normalized value plus the 6-way domain one-hot), hidden size 50, and a linear adapter from 50 to 18. It reads each 12-point window as a 12-step sequence of scalars.</li>
+          <li><strong>Training forward pass:</strong> each window's full series is gathered, the smoothing recursion runs from the series' first point, the window and target are normalized, and the LSTM and adapter produce the 18 outputs in log space.</li>
+          <li><strong>Inference:</strong> for every series, take the last 12 real points, run the recursion over the full series, normalize, predict, and denormalize. The seasonality for the 18 forecast steps is the last 12 seasonality values tiled.</li>
+          <li><strong>Checkpoint:</strong> about 68 MB, almost all of it the stored series (about 52 MB of values and 13 MB of mask). Trainable parameters total about 684,700, of which about 672,000 are the per-series smoothing parameters. The LSTM and adapter together are only about 12,700.</li>
+        </ul>
+
+        <h3 class="sub">Parameter values</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Baseline parameter values table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row">Network</th><td>1-layer LSTM, input size 7, hidden size 50, linear adapter 50 &rarr; 18</td></tr>
+              <tr><th scope="row">Windows</th><td>Input 12, output 18, maximum series length 272</td></tr>
+              <tr><th scope="row">Season length</th><td>12</td></tr>
+              <tr><th scope="row">Training percentile (tau)</th><td>0.49</td></tr>
+              <tr><th scope="row">LVP (wiggliness weight)</th><td>50</td></tr>
+              <tr><th scope="row">Optimizer</th><td>Adam, one optimizer over all parameters, learning rate 5e-4, constant</td></tr>
+              <tr><th scope="row">Batch size</th><td>8,192 shuffled windows (918 batches per epoch)</td></tr>
+              <tr><th scope="row">Epochs</th><td>10 for the real run, matching the paper's Monthly value</td></tr>
+              <tr><th scope="row">Smoothing init</th><td><code>alpha_raw = beta_raw = 0</code> (so 0.5 after the sigmoid), initial seasonality raw 0 (so 1.0 after the exp)</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 class="sub">The code</h3>
+        <div class="table-scroll" tabindex="0" role="region" aria-label="Baseline files table">
+          <table class="data-table files">
+            <tbody>
+              <tr><th scope="row"><code>Data_LSTM.py</code></th><td>Loads the M4 CSVs into a list of series objects and attaches the domain one-hot.</td></tr>
+              <tr><th scope="row"><code>windowing_LSTM.py</code></th><td>The window dataset: one example per rolling window per series, plus the length and window constants.</td></tr>
+              <tr><th scope="row"><code>ES_Layer_LSTM.py</code></th><td>The smoothing layer: per-series alpha, beta and initial seasonality, the recursion, and normalize and denormalize.</td></tr>
+              <tr><th scope="row"><code>Model_LSTM.py</code></th><td>Ties the smoothing layer, the LSTM and the adapter together, with a training forward pass and an inference forecast.</td></tr>
+              <tr><th scope="row"><code>Loss_LSTM.py</code></th><td>Pinball loss plus the level-wiggliness penalty.</td></tr>
+              <tr><th scope="row"><code>Train_LSTM.py</code></th><td>Training script: Adam, loss logging, saves a checkpoint and the loss plot.</td></tr>
+              <tr><th scope="row"><code>Evaluate_LSTM.py</code></th><td>Loads a checkpoint, forecasts every series and reports sMAPE on the held-out 18 points.</td></tr>
+              <tr><th scope="row"><code>Compare_LSTM.py</code></th><td>Computes sMAPE, MASE and OWA against the official M4 reference rows and saves the results, per-series scores and forecasts.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="differences" class="block" aria-labelledby="differences-title">
+        <h2 id="differences-title">How the baseline differs from the paper</h2>
+        <p class="section-lede">
+          It matches the paper's input window (12), output window (18), state size (50), learning rate (5e-4), tau (0.49),
+          LVP (50) and maximum length (272), the log-normalized inputs, the domain one-hot, the joint training and the
+          pinball loss in log space. It differs from the paper and its reference C++ in these ways.
+        </p>
+        <ul class="bullets">
+          <li><strong>Network.</strong> A plain one-layer LSTM, against the paper's residual dilated stack with dilations 1-3-6-12.</li>
+          <li><strong>How the RNN is driven.</strong> The baseline treats each 12-point window as an independent 12-step sequence with the state reset every window. The paper and the C++ feed a whole window as one vector per timestep and step the RNN through the entire series with the state carried along.</li>
+          <li><strong>Wiggliness scope.</strong> The window span here, against each series' whole level sequence in the C++.</li>
+          <li><strong>Forecast seasonality.</strong> The last 12 values tiled here, against the updated seasonality extended past the end of the series in the C++.</li>
+          <li><strong>Training granularity.</strong> Batches of 8,192 shuffled windows with one shared optimizer, against one Adam update per series in the C++, with a separate optimizer for the per-series parameters, gradient clipping at 20, input noise and a loss scaled by 2.</li>
+          <li><strong>Initialisation.</strong> Per-series parameters start at zero here, while the C++ starts them differently.</li>
+          <li><strong>Ensembling.</strong> The paper and the C++ use a simple ensemble (the data split in two, three runs each, forecasts averaged over the last five epochs). The baseline is a single model, a single run and a last-epoch forecast.</li>
+        </ul>
+
+        <details class="fold">
+          <summary>Known quirks and gotchas</summary>
+          <div>
+            <ul class="bullets tight" style="margin-top: 0">
+              <li>Run the scripts from inside the baseline folder: the CSV paths are relative, and the data module loads the 215&nbsp;MB training file at import time, so importing it from anywhere else fails.</li>
+              <li>The saved training script is set up as a quick test (<code>EPOCHS = 1</code>, <code>*_TEST</code> output names), while its messages and docstring still mention the full-run names and an out-of-date batch size.</li>
+              <li>Each window re-runs the smoothing recursion over the whole series, about 7.5 million recursions per epoch, which makes epochs slower than a per-series approach would be.</li>
+              <li>The validity mask is passed to the recursion but unused, so correctness relies on windows never reading padded positions.</li>
+              <li>Series order in a checkpoint is fixed by the order of the series list, and per-series parameters are indexed by position, not id.</li>
+              <li>The evaluation script imports the data module under a different name, so it only resolves with the repository root on the Python path.</li>
+            </ul>
+          </div>
+        </details>
+      </section>
+
+      <section id="references" class="block" aria-labelledby="references-title">
+        <h2 id="references-title">Papers and code</h2>
+        <ol class="refs">
+          <li>
+            Smyl, S. <cite>A hybrid method of exponential smoothing and recurrent neural networks for time series forecasting.</cite>
+            International Journal of Forecasting, 36(1), 75&ndash;85, 2020. The ES-RNN method being reproduced.
+            <span class="ref-links"><a href="https://doi.org/10.1016/j.ijforecast.2019.03.017" target="_blank" rel="noopener noreferrer">Paper (DOI)</a></span>
+          </li>
+          <li>
+            Makridakis, S., Spiliotis, E., and Assimakopoulos, V. <cite>The M4 Competition: 100,000 time series and 61 forecasting methods.</cite>
+            International Journal of Forecasting, 36(1), 54&ndash;74, 2020. The official M4 results paper, used as the source of the benchmark comparisons.
+            <span class="ref-links"><a href="https://doi.org/10.1016/j.ijforecast.2019.04.014" target="_blank" rel="noopener noreferrer">Paper (DOI)</a></span>
+          </li>
+          <li>
+            <cite>M4-methods</cite> on GitHub. Every M4 submission, the forecasts and <code>Evaluation and Ranks.xlsx</code>, the per-frequency scores used above. The winning ES-RNN is submission ID 118 (Smyl).
+            <span class="ref-links"><a href="https://github.com/Mcompetitions/M4-methods" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+          </li>
+          <li>
+            Kim, J., El-Khamy, M., and Lee, J. <cite>Residual LSTM: Design of a Deep Recurrent Architecture for Distant Speech Recognition.</cite> 2017. The residual cells used in the paper's Monthly network.
+            <span class="ref-links"><a href="https://arxiv.org/abs/1701.03360" target="_blank" rel="noopener noreferrer">arXiv</a></span>
+          </li>
+        </ol>
+        <h3 class="sub">Planned comparison tools</h3>
+        <ol class="refs" start="5">
+          <li>
+            Chen, T. and Guestrin, C. <cite>XGBoost: A Scalable Tree Boosting System.</cite> 2016.
+            <span class="ref-links"><a href="https://arxiv.org/abs/1603.02754" target="_blank" rel="noopener noreferrer">arXiv</a><a href="https://github.com/dmlc/xgboost" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+          </li>
+          <li>
+            <cite>LightGBM</cite>, a gradient boosting framework from Microsoft.
+            <span class="ref-links"><a href="https://github.com/microsoft/LightGBM" target="_blank" rel="noopener noreferrer">GitHub</a></span>
+          </li>
+        </ol>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a href="/#work">&larr; Back to all projects</a>
+    </footer>
+
+  </body>
+</html>
